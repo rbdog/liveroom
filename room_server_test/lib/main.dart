@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:room_server_test/room_server.dart';
-import 'package:room_server_test/room_server_test_view.dart';
+import 'package:room_server/room_server.dart';
 
 final roomServer = RoomServer();
 
