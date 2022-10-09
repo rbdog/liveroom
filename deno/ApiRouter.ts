@@ -41,10 +41,7 @@ export class ApiRouter {
   // Http リクエスト 1つずつに対する処理
   requestHandler(req: Deno.RequestEvent) {
     const url = new URL(req.request.url);
-    console.log("リクエストを受け取りました");
     for (const route of this.routes) {
-      console.log(req.request.method);
-      console.log(url.pathname);
       if (req.request.method === route.method && url.pathname === route.path) {
         route.process(req, url);
       }

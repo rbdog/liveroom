@@ -2,15 +2,29 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+
+enum _BodyType {
+  join(0),
+  message(1),
+  exit(2);
+
+  final int rawValue;
+  const _BodyType(this.rawValue);
+  factory _BodyType.from({required int rawValue}) {
+    final value = _BodyType.values.firstWhere((e) => e.rawValue == rawValue);
+    return value;
+  }
+}
 
 // ライブイベント
 class _LiveEvent {
   // シートID
   final String seatId;
   // join | message | exit
-  final String bodyType;
+  final _BodyType bodyType;
   // メッセージ本文
   final String body;
   _LiveEvent({
@@ -21,7 +35,7 @@ class _LiveEvent {
   // JSON 変換
   _LiveEvent.fromJson(Map<String, dynamic> json)
       : seatId = json['seat_id'],
-        bodyType = json['body_type'],
+        bodyType = _BodyType.from(rawValue: json['body_type']),
         body = json['body'];
   Map<String, dynamic> toJson() => {
         'seat_id': seatId,
@@ -99,16 +113,16 @@ class Liveroom {
     // WebSocket 受信
     final subs = _channel?.stream.listen((event) {
       final json = jsonDecode(event);
-      final payload = _LiveEvent.fromJson(json);
-      switch (payload.bodyType) {
-        case 'join':
-          _joinCtrl.sink.add(payload.body);
+      final liveEvent = _LiveEvent.fromJson(json);
+      switch (liveEvent.bodyType) {
+        case _BodyType.join:
+          _joinCtrl.sink.add(liveEvent.body);
           break;
-        case 'message':
-          _sendCtrl.sink.add(payload.body);
+        case _BodyType.message:
+          _sendCtrl.sink.add(liveEvent.body);
           break;
-        case 'exit':
-          _exitCtrl.sink.add(payload.body);
+        case _BodyType.exit:
+          _exitCtrl.sink.add(liveEvent.body);
           break;
         default:
           break;
@@ -125,7 +139,7 @@ class Liveroom {
       print('Error: already joined room');
       return;
     }
-    _connect('create', roomId, optSeatId: seatId);
+    _connect('/create', roomId, optSeatId: seatId);
   }
 
   // ルームに参加
@@ -134,7 +148,7 @@ class Liveroom {
       print('Error: already joined room');
       return;
     }
-    _connect('join', roomId, optSeatId: seatId);
+    _connect('/join', roomId, optSeatId: seatId);
   }
 
   // 誰かが入室した時
@@ -145,25 +159,23 @@ class Liveroom {
     subsList.add(subs);
   }
 
+  // メッセージをルーム内全員に送信
+  void send({required String message}) {
+    if (_channel == null) {
+      debugPrint('channel null');
+    } else {
+      debugPrint('message を送ります');
+    }
+    _channel?.sink.add(message);
+  }
+
   // メッセージを受け取った時の処理
   void onSend(void Function(String message) process) {
+    debugPrint('message を受け取りました');
     final subs = _sendCtrl.stream.listen((body) {
       process(body);
     });
     subsList.add(subs);
-  }
-
-  // 誰かが退出した時
-  void onExit(void Function(String seatId) process) {
-    final subs = _exitCtrl.stream.listen((body) {
-      process(body);
-    });
-    subsList.add(subs);
-  }
-
-  // メッセージをルーム内全員に送信
-  void send({required String message}) {
-    _channel?.sink.add(message);
   }
 
   // ルームを退出
@@ -175,5 +187,13 @@ class Liveroom {
     _channel?.sink.close();
     _channel = null;
     config.roomId = null;
+  }
+
+  // 誰かが退出した時
+  void onExit(void Function(String seatId) process) {
+    final subs = _exitCtrl.stream.listen((body) {
+      process(body);
+    });
+    subsList.add(subs);
   }
 }

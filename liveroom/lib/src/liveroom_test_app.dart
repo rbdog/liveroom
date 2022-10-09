@@ -146,6 +146,7 @@ class _MessageRoomState extends State<_MessageRoomView> {
           ),
           ElevatedButton(
             onPressed: () {
+              debugPrint('画面から　送ります');
               widget.liveroom.send(message: textController.text);
             },
             child: Text('Send'),

@@ -2,11 +2,14 @@ name: liveroom_test
 description: A new Flutter project.
 version: 1.0.0+1
 
+publish_to: "none"
+
 environment:
   sdk: ">=2.18.1 <3.0.0"
 
 dependencies:
   liveroom:
+    path: "../liveroom"
   flutter:
     sdk: flutter
 
