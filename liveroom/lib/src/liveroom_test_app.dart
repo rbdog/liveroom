@@ -98,7 +98,7 @@ class _MessageRoomState extends State<_MessageRoomView> {
   @override
   void initState() {
     super.initState();
-    widget.liveroom.onSend((text) {
+    widget.liveroom.receive((text) {
       setState(() {
         messages.add(text);
       });

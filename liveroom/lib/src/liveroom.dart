@@ -81,7 +81,7 @@ class Liveroom {
     Scheme scheme = Scheme.ws,
     String host = '0.0.0.0',
     String rootPath = '/liveroom',
-    int port = 3000,
+    int port = 5000,
   }) : config = LiveroomConfig(
           scheme: scheme,
           host: host,
@@ -170,7 +170,7 @@ class Liveroom {
   }
 
   // メッセージを受け取った時の処理
-  void onSend(void Function(String message) process) {
+  void receive(void Function(String message) process) {
     debugPrint('message を受け取りました');
     final subs = _sendCtrl.stream.listen((body) {
       process(body);

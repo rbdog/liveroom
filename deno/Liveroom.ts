@@ -4,13 +4,6 @@
 
 import { ApiRouter } from "./ApiRouter.ts";
 
-//
-// ルーム作成
-// ws://0.0.0.0:3000/rooms?command=create&room_id=x&client_id=x
-// ルーム参加
-// ws://0.0.0.0:3000/rooms?command=join&room_id=x&client_id=x
-//
-
 // イベント Body Type
 const BodyType = {
   join: 0,
@@ -39,7 +32,7 @@ type Room = {
 
 type LiveroomConfig = { port?: number; rootPath?: string };
 const defaultConfig: LiveroomConfig = {
-  port: 3000,
+  port: 5000,
   rootPath: "/liveroom",
 };
 
