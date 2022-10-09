@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -71,17 +70,20 @@ class LiveroomConfig {
 class Liveroom {
   // WebSocket
   WebSocketChannel? _channel;
-  final _sendCtrl = StreamController<String>.broadcast();
+  final _sendCtrl = StreamController<_LiveEvent>.broadcast();
   final _joinCtrl = StreamController<String>.broadcast();
   final _exitCtrl = StreamController<String>.broadcast();
+  final _errCtrl = StreamController<String>.broadcast();
   final LiveroomConfig config;
   final List<StreamSubscription> subsList = [];
+  final void Function(String log)? logger;
 
   Liveroom({
     Scheme scheme = Scheme.ws,
     String host = '0.0.0.0',
     String rootPath = '/liveroom',
     int port = 5000,
+    this.logger,
   }) : config = LiveroomConfig(
           scheme: scheme,
           host: host,
@@ -94,7 +96,7 @@ class Liveroom {
     String apiPath,
     String roomId, {
     required String? optSeatId,
-    required void Function(Error error) onError,
+    required void Function(Object error) onError,
   }) {
     final seatId = optSeatId ?? const Uuid().v4();
     final url = Uri(
@@ -107,8 +109,9 @@ class Liveroom {
         'seat_id': seatId,
       },
     );
-    print('接続先: ${url.toString()}');
+    logger?.call('WebSocket URL: ${url.toString()}');
     _channel = WebSocketChannel.connect(url);
+
     // save roomId, seatId
     config.roomId = roomId;
     config.seatId = seatId;
@@ -119,63 +122,70 @@ class Liveroom {
         final liveEvent = _LiveEvent.fromJson(json);
         switch (liveEvent.bodyType) {
           case _BodyType.join:
-            _joinCtrl.sink.add(liveEvent.body);
+            _joinCtrl.sink.add(liveEvent.seatId);
             break;
           case _BodyType.message:
-            _sendCtrl.sink.add(liveEvent.body);
+            _sendCtrl.sink.add(liveEvent);
             break;
           case _BodyType.exit:
-            _exitCtrl.sink.add(liveEvent.body);
+            _exitCtrl.sink.add(liveEvent.seatId);
             break;
           default:
             break;
         }
       },
-      onError: onError,
+      cancelOnError: true,
+      onError: (Object error) {
+        onError(error);
+      },
+      onDone: () {
+        // 自分が disconnected
+        _exitCtrl.sink.add(seatId);
+      },
     );
     if (subs != null) {
       subsList.add(subs);
     }
   }
 
+  // 既に参加中のルームがあるかどうか
+  bool get isJoined {
+    return _channel != null;
+  }
+
+  // 自分のシートID
+  String? get mySeatId {
+    return config.seatId;
+  }
+
   // ルームを作成
-  Future<void> create({required String roomId, String? seatId}) {
-    final Completer completer = Completer();
-    if (_channel != null) {
+  create({required String roomId, String? seatId}) {
+    if (isJoined) {
       return Future.error('already joined room');
     }
-    try {
-      _connect(
-        '/create',
-        roomId,
-        optSeatId: seatId,
-        onError: (Object error) => throw error,
-      );
-      completer.complete();
-    } catch (error) {
-      rethrow;
-    }
-    return completer.future;
+    _connect(
+      '/create',
+      roomId,
+      optSeatId: seatId,
+      onError: (Object error) {
+        _errCtrl.sink.add(error.toString());
+      },
+    );
   }
 
   // ルームに参加
-  Future<void> join({required String roomId, String? seatId}) {
-    final Completer completer = Completer();
-    if (_channel != null) {
+  join({required String roomId, String? seatId}) {
+    if (isJoined) {
       return Future.error('already joined room');
     }
-    try {
-      _connect(
-        '/join',
-        roomId,
-        optSeatId: seatId,
-        onError: (Object error) => throw error,
-      );
-      completer.complete();
-    } catch (error) {
-      rethrow;
-    }
-    return completer.future;
+    _connect(
+      '/join',
+      roomId,
+      optSeatId: seatId,
+      onError: (Object error) {
+        _errCtrl.sink.add(error.toString());
+      },
+    );
   }
 
   // 誰かが入室した時
@@ -188,19 +198,17 @@ class Liveroom {
 
   // メッセージをルーム内全員に送信
   void send({required String message}) {
-    if (_channel == null) {
-      debugPrint('channel null');
-    } else {
-      debugPrint('message を送ります');
+    if (!isJoined) {
+      logger?.call('Not joined Room');
+      return;
     }
     _channel?.sink.add(message);
   }
 
   // メッセージを受け取った時の処理
-  void receive(void Function(String message) process) {
-    debugPrint('message を受け取りました');
-    final subs = _sendCtrl.stream.listen((body) {
-      process(body);
+  void receive(void Function(String seatId, String message) process) {
+    final subs = _sendCtrl.stream.listen((liveEvent) {
+      process(liveEvent.seatId, liveEvent.body);
     });
     subsList.add(subs);
   }
@@ -220,6 +228,14 @@ class Liveroom {
   void onExit(void Function(String seatId) process) {
     final subs = _exitCtrl.stream.listen((body) {
       process(body);
+    });
+    subsList.add(subs);
+  }
+
+  // エラーがあった時
+  void onError(void Function(String errorMessage) process) {
+    final subs = _errCtrl.stream.listen((errString) {
+      process(errString);
     });
     subsList.add(subs);
   }

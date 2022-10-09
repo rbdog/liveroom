@@ -36,23 +36,28 @@ class _CreateJoinView extends StatelessWidget {
     final buttonsRow = Row(
       children: [
         ElevatedButton(
-          onPressed: () async {
-            await liveroom.create(roomId: 'ROOM-01').catchError((Object error) {
-              print('エラー発生');
-              print(error.toString());
-            });
-            pushToMessageRoom(context);
+          onPressed: () {
+            liveroom.onJoin(
+              (seatId) {
+                if (liveroom.mySeatId == seatId) {
+                  pushToMessageRoom(context);
+                }
+              },
+            );
+            liveroom.create(roomId: 'ROOM-01');
           },
           child: Text('Create'),
         ),
         ElevatedButton(
-          onPressed: () async {
-            await liveroom.join(roomId: 'ROOM-01').catchError((Object error) {
-              print('エラー発生');
-              print(error.toString());
-            });
-
-            pushToMessageRoom(context);
+          onPressed: () {
+            liveroom.onJoin(
+              (seatId) {
+                if (liveroom.mySeatId == seatId) {
+                  pushToMessageRoom(context);
+                }
+              },
+            );
+            liveroom.join(roomId: 'ROOM-01');
           },
           child: Text('Join'),
         ),
@@ -72,7 +77,9 @@ class _CreateJoinView extends StatelessWidget {
     BuildContext context,
   ) {
     final route = MaterialPageRoute(
-      builder: (context) => _MessageRoomView(liveroom: liveroom),
+      builder: (context) => _MessageRoomView(
+        liveroom: liveroom,
+      ),
     );
     Navigator.of(context).push(route);
   }
@@ -105,9 +112,9 @@ class _MessageRoomState extends State<_MessageRoomView> {
   @override
   void initState() {
     super.initState();
-    widget.liveroom.receive((text) {
+    widget.liveroom.receive((seatId, message) {
       setState(() {
-        messages.add(text);
+        messages.add(seatId + ': ' + message);
       });
     });
   }
