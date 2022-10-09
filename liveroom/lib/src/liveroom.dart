@@ -5,27 +5,27 @@ import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-// ペイロード
-class _Payload {
+// ライブイベント
+class _LiveEvent {
+  // シートID
+  final String seatId;
   // join | message | exit
   final String bodyType;
-  // クライアントID
-  final String clientId;
   // メッセージ本文
   final String body;
-  _Payload({
+  _LiveEvent({
+    required this.seatId,
     required this.bodyType,
-    required this.clientId,
     required this.body,
   });
   // JSON 変換
-  _Payload.fromJson(Map<String, dynamic> json)
-      : bodyType = json['body_type'],
-        clientId = json['client_id'],
+  _LiveEvent.fromJson(Map<String, dynamic> json)
+      : seatId = json['seat_id'],
+        bodyType = json['body_type'],
         body = json['body'];
   Map<String, dynamic> toJson() => {
+        'seat_id': seatId,
         'body_type': bodyType,
-        'client_id': clientId,
         'body': body,
       };
 }
@@ -37,70 +37,69 @@ enum Scheme {
   const Scheme(this.rawValue);
 }
 
-class _RoomServerConfig {
+class LiveroomConfig {
   final Scheme scheme;
   final String host;
-  final String path;
+  final String rootPath;
   final int port;
-  String? clientId;
   String? roomId;
+  String? seatId;
 
-  _RoomServerConfig({
+  LiveroomConfig({
     required this.scheme,
     required this.host,
-    required this.path,
+    required this.rootPath,
     required this.port,
   });
 }
 
-// オンラインのルーム
-class RoomServer {
+// ライブルーム
+class Liveroom {
   // WebSocket
   WebSocketChannel? _channel;
   final _sendCtrl = StreamController<String>.broadcast();
   final _joinCtrl = StreamController<String>.broadcast();
   final _exitCtrl = StreamController<String>.broadcast();
-  final _RoomServerConfig config;
+  final LiveroomConfig config;
   final List<StreamSubscription> subsList = [];
 
-  RoomServer({
+  Liveroom({
     Scheme scheme = Scheme.ws,
     String host = '0.0.0.0',
-    String path = '/rooms',
+    String rootPath = '/liveroom',
     int port = 3000,
-  }) : config = _RoomServerConfig(
+  }) : config = LiveroomConfig(
           scheme: scheme,
           host: host,
-          path: path,
+          rootPath: rootPath,
           port: port,
         );
 
   // WebSocket接続
   void _connect(
-    String command,
+    String apiPath,
     String roomId, {
-    required String? optClientId,
+    required String? optSeatId,
   }) {
-    final clientId = optClientId ?? const Uuid().v4();
+    final seatId = optSeatId ?? const Uuid().v4();
     final url = Uri(
       scheme: config.scheme.rawValue,
       host: config.host,
-      path: config.path,
+      path: config.rootPath + apiPath,
       port: config.port,
       queryParameters: {
-        'command': command,
         'room_id': roomId,
-        'client_id': clientId,
+        'seat_id': seatId,
       },
     );
     _channel = WebSocketChannel.connect(url);
-    // save roomId, clientId
+    // save roomId, seatId
     config.roomId = roomId;
-    config.clientId = clientId;
+    config.seatId = seatId;
     // WebSocket 受信
     final subs = _channel?.stream.listen((event) {
       final json = jsonDecode(event);
-      final payload = _Payload.fromJson(json);
+      final payload = _LiveEvent.fromJson(json);
       switch (payload.bodyType) {
         case 'join':
           _joinCtrl.sink.add(payload.body);
@@ -121,25 +120,25 @@ class RoomServer {
   }
 
   // ルームを作成
-  void create({required String roomId, String? clientId}) {
+  void create({required String roomId, String? seatId}) {
     if (_channel != null) {
       print('Error: already joined room');
       return;
     }
-    _connect('create', roomId, optClientId: clientId);
+    _connect('create', roomId, optSeatId: seatId);
   }
 
   // ルームに参加
-  void join({required String roomId, String? clientId}) {
+  void join({required String roomId, String? seatId}) {
     if (_channel != null) {
       print('Error: already joined room');
       return;
     }
-    _connect('join', roomId, optClientId: clientId);
+    _connect('join', roomId, optSeatId: seatId);
   }
 
   // 誰かが入室した時
-  void onJoin(void Function(String clientId) process) {
+  void onJoin(void Function(String seatId) process) {
     final subs = _joinCtrl.stream.listen((body) {
       process(body);
     });
@@ -155,7 +154,7 @@ class RoomServer {
   }
 
   // 誰かが退出した時
-  void onExit(void Function(String clientId) process) {
+  void onExit(void Function(String seatId) process) {
     final subs = _exitCtrl.stream.listen((body) {
       process(body);
     });

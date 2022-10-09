@@ -1,5 +1,5 @@
-name: room_server
-description: Most Simple Wrapper of WebSocket
+name: liveroom
+description: Most Simple Wrapper of WebSocket Room
 version: 0.0.1
 homepage:
 

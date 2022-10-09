@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:room_server/src/room_server.dart';
+import 'package:liveroom/src/liveroom.dart';
 
 //
-// * RoomServerTestView
+// * LiveroomTestApp
 //
-class RoomServerTestApp extends StatelessWidget {
-  const RoomServerTestApp(
-    this.server, {
+class LiveroomTestApp extends StatelessWidget {
+  const LiveroomTestApp(
+    this.liveroom, {
     Key? key,
   }) : super(key: key);
 
-  final RoomServer server;
+  final Liveroom liveroom;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: _CreateJoinView(server: server),
+      home: _CreateJoinView(liveroom: liveroom),
     );
   }
 }
@@ -25,11 +25,11 @@ class RoomServerTestApp extends StatelessWidget {
 //
 class _CreateJoinView extends StatelessWidget {
   const _CreateJoinView({
-    required this.server,
+    required this.liveroom,
     Key? key,
   }) : super(key: key);
 
-  final RoomServer server;
+  final Liveroom liveroom;
 
   @override
   Widget build(BuildContext context) {
@@ -37,14 +37,14 @@ class _CreateJoinView extends StatelessWidget {
       children: [
         ElevatedButton(
           onPressed: () {
-            server.create(roomId: 'ROOM-01');
+            liveroom.create(roomId: 'ROOM-01');
             pushToMessageRoom(context);
           },
           child: Text('Create'),
         ),
         ElevatedButton(
           onPressed: () {
-            server.join(roomId: 'ROOM-01');
+            liveroom.join(roomId: 'ROOM-01');
             pushToMessageRoom(context);
           },
           child: Text('Join'),
@@ -65,7 +65,7 @@ class _CreateJoinView extends StatelessWidget {
     BuildContext context,
   ) {
     final route = MaterialPageRoute(
-      builder: (context) => _MessageRoomView(server: server),
+      builder: (context) => _MessageRoomView(liveroom: liveroom),
     );
     Navigator.of(context).push(route);
   }
@@ -76,11 +76,11 @@ class _CreateJoinView extends StatelessWidget {
 //
 class _MessageRoomView extends StatefulWidget {
   const _MessageRoomView({
-    required this.server,
+    required this.liveroom,
     Key? key,
   }) : super(key: key);
 
-  final RoomServer server;
+  final Liveroom liveroom;
 
   @override
   _MessageRoomState createState() {
@@ -98,7 +98,7 @@ class _MessageRoomState extends State<_MessageRoomView> {
   @override
   void initState() {
     super.initState();
-    widget.server.onSend((text) {
+    widget.liveroom.onSend((text) {
       setState(() {
         messages.add(text);
       });
@@ -107,7 +107,7 @@ class _MessageRoomState extends State<_MessageRoomView> {
 
   @override
   void dispose() {
-    widget.server.exit();
+    widget.liveroom.exit();
     super.dispose();
   }
 
@@ -122,7 +122,7 @@ class _MessageRoomState extends State<_MessageRoomView> {
         children: [
           ElevatedButton(
             onPressed: () {
-              widget.server.exit();
+              widget.liveroom.exit();
               Navigator.of(context).pop();
             },
             child: Text('Exit'),
@@ -146,7 +146,7 @@ class _MessageRoomState extends State<_MessageRoomView> {
           ),
           ElevatedButton(
             onPressed: () {
-              widget.server.send(message: textController.text);
+              widget.liveroom.send(message: textController.text);
             },
             child: Text('Send'),
           ),
