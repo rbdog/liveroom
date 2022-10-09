@@ -40,15 +40,11 @@ void main() {
 
 functions
 
-```example.dart
-liveroom.create(roomId: '0001');
-liveroom.join(roomId: '0001');
-liveroom.send(message: 'Hello');
-liveroom.receive((message) {
-  print(message);
-});
-liveroom.exit();
-```
+- liveroom.create(roomId: '0001');
+- liveroom.join(roomId: '0001');
+- liveroom.send(message: 'Hello');
+- liveroom.receive((message) => print(message));
+- liveroom.exit();
 
 ## More Infomation
 
@@ -59,7 +55,7 @@ WebSocket URL
 | Create Room | ws://localhost:5000/liveroom/create?room_id=ROOM_ID&seat_id=SEAT_ID |
 | Join Room   | ws://localhost:5000/liveroom/join?room_id=ROOM_ID&seat_id=SEAT_ID   |
 
-Message Format
+Data Message Format
 
 ```
 {
