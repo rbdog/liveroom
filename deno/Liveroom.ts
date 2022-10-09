@@ -120,9 +120,9 @@ export class Liveroom {
   }
 
   // ルームから退出
-  exit(room_id: string, seat_id: string): number {
+  exit(roomId: string, seat_id: string): number {
     // 対象のルームを見つける
-    const room = this.rooms.get(room_id);
+    const room = this.rooms.get(roomId);
     if (!room) {
       return ExitResult.roomNotFound;
     }
@@ -130,7 +130,7 @@ export class Liveroom {
     room.seats = room.seats.filter((e) => e.id !== seat_id);
     // クライアントが0人になったらルームを削除
     if (room.seats.length === 0) {
-      this.rooms.delete(room_id);
+      this.rooms.delete(roomId);
       return ExitResult.exitAndDeleteRoom;
     } else {
       return ExitResult.exitAndKeepRoom;
@@ -191,7 +191,7 @@ export class Liveroom {
   }
 
   // 起動
-  run() {
+  run(logger: ((log: string) => void) | null = null) {
     const rootPath = this.config?.rootPath ?? defaultConfig.rootPath!;
     this.router
       .get(rootPath + "/create", (req, url) => {
@@ -253,6 +253,10 @@ export class Liveroom {
         }
       });
 
-    this.router.listen(this.config?.port ?? defaultConfig.port!);
+    const port = this.config?.port ?? defaultConfig.port!;
+    this.router.listen(port);
+    if (logger != null) {
+      logger(`running on port ${port}`);
+    }
   }
 }

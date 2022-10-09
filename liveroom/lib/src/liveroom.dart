@@ -94,6 +94,7 @@ class Liveroom {
     String apiPath,
     String roomId, {
     required String? optSeatId,
+    required void Function(Error error) onError,
   }) {
     final seatId = optSeatId ?? const Uuid().v4();
     final url = Uri(
@@ -106,49 +107,75 @@ class Liveroom {
         'seat_id': seatId,
       },
     );
+    print('接続先: ${url.toString()}');
     _channel = WebSocketChannel.connect(url);
     // save roomId, seatId
     config.roomId = roomId;
     config.seatId = seatId;
     // WebSocket 受信
-    final subs = _channel?.stream.listen((event) {
-      final json = jsonDecode(event);
-      final liveEvent = _LiveEvent.fromJson(json);
-      switch (liveEvent.bodyType) {
-        case _BodyType.join:
-          _joinCtrl.sink.add(liveEvent.body);
-          break;
-        case _BodyType.message:
-          _sendCtrl.sink.add(liveEvent.body);
-          break;
-        case _BodyType.exit:
-          _exitCtrl.sink.add(liveEvent.body);
-          break;
-        default:
-          break;
-      }
-    });
+    final subs = _channel?.stream.listen(
+      (event) {
+        final json = jsonDecode(event);
+        final liveEvent = _LiveEvent.fromJson(json);
+        switch (liveEvent.bodyType) {
+          case _BodyType.join:
+            _joinCtrl.sink.add(liveEvent.body);
+            break;
+          case _BodyType.message:
+            _sendCtrl.sink.add(liveEvent.body);
+            break;
+          case _BodyType.exit:
+            _exitCtrl.sink.add(liveEvent.body);
+            break;
+          default:
+            break;
+        }
+      },
+      onError: onError,
+    );
     if (subs != null) {
       subsList.add(subs);
     }
   }
 
   // ルームを作成
-  void create({required String roomId, String? seatId}) {
+  Future<void> create({required String roomId, String? seatId}) {
+    final Completer completer = Completer();
     if (_channel != null) {
-      print('Error: already joined room');
-      return;
+      return Future.error('already joined room');
     }
-    _connect('/create', roomId, optSeatId: seatId);
+    try {
+      _connect(
+        '/create',
+        roomId,
+        optSeatId: seatId,
+        onError: (Object error) => throw error,
+      );
+      completer.complete();
+    } catch (error) {
+      rethrow;
+    }
+    return completer.future;
   }
 
   // ルームに参加
-  void join({required String roomId, String? seatId}) {
+  Future<void> join({required String roomId, String? seatId}) {
+    final Completer completer = Completer();
     if (_channel != null) {
-      print('Error: already joined room');
-      return;
+      return Future.error('already joined room');
     }
-    _connect('/join', roomId, optSeatId: seatId);
+    try {
+      _connect(
+        '/join',
+        roomId,
+        optSeatId: seatId,
+        onError: (Object error) => throw error,
+      );
+      completer.complete();
+    } catch (error) {
+      rethrow;
+    }
+    return completer.future;
   }
 
   // 誰かが入室した時

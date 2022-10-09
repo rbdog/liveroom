@@ -36,15 +36,22 @@ class _CreateJoinView extends StatelessWidget {
     final buttonsRow = Row(
       children: [
         ElevatedButton(
-          onPressed: () {
-            liveroom.create(roomId: 'ROOM-01');
+          onPressed: () async {
+            await liveroom.create(roomId: 'ROOM-01').catchError((Object error) {
+              print('エラー発生');
+              print(error.toString());
+            });
             pushToMessageRoom(context);
           },
           child: Text('Create'),
         ),
         ElevatedButton(
-          onPressed: () {
-            liveroom.join(roomId: 'ROOM-01');
+          onPressed: () async {
+            await liveroom.join(roomId: 'ROOM-01').catchError((Object error) {
+              print('エラー発生');
+              print(error.toString());
+            });
+
             pushToMessageRoom(context);
           },
           child: Text('Join'),
