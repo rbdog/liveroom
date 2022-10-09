@@ -13,3 +13,11 @@
 ## 0.0.4
 
 - Change function name
+
+## 0.0.5
+
+- Add onError
+
+## 0.0.6
+
+- Fix Layout

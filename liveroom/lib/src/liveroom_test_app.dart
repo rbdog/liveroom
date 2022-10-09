@@ -114,7 +114,7 @@ class _MessageRoomState extends State<_MessageRoomView> {
     super.initState();
     widget.liveroom.receive((seatId, message) {
       setState(() {
-        messages.add(seatId + ': ' + message);
+        messages.add(message);
       });
     });
   }
