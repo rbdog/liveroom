@@ -15,6 +15,7 @@ class LiveroomTestApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: _CreateJoinView(liveroom: liveroom),
     );
   }
@@ -34,9 +35,11 @@ class _CreateJoinView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final buttonsRow = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         ElevatedButton(
           onPressed: () {
+            liveroom.exit();
             liveroom.onJoin(
               (seatId) {
                 if (liveroom.mySeatId == seatId) {
@@ -46,10 +49,11 @@ class _CreateJoinView extends StatelessWidget {
             );
             liveroom.create(roomId: 'ROOM-01');
           },
-          child: Text('Create'),
+          child: Text('Create \n Room'),
         ),
         ElevatedButton(
           onPressed: () {
+            liveroom.exit();
             liveroom.onJoin(
               (seatId) {
                 if (liveroom.mySeatId == seatId) {
@@ -59,14 +63,12 @@ class _CreateJoinView extends StatelessWidget {
             );
             liveroom.join(roomId: 'ROOM-01');
           },
-          child: Text('Join'),
+          child: Text('Join \n Room'),
         ),
       ],
     );
-    final body = Column(
-      children: [
-        buttonsRow,
-      ],
+    final body = Center(
+      child: buttonsRow,
     );
     return Scaffold(
       body: body,
@@ -112,9 +114,19 @@ class _MessageRoomState extends State<_MessageRoomView> {
   @override
   void initState() {
     super.initState();
+    widget.liveroom.onJoin((seatId) {
+      setState(() {
+        messages.add('joined');
+      });
+    });
     widget.liveroom.receive((seatId, message) {
       setState(() {
         messages.add(message);
+      });
+    });
+    widget.liveroom.onExit((seatId) {
+      setState(() {
+        messages.add('exited');
       });
     });
   }
@@ -131,8 +143,9 @@ class _MessageRoomState extends State<_MessageRoomView> {
     final topBar = Container(
       width: double.infinity,
       height: 100,
-      color: Colors.blue,
+      color: Colors.grey,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           ElevatedButton(
             onPressed: () {
@@ -148,13 +161,16 @@ class _MessageRoomState extends State<_MessageRoomView> {
     final bottomBar = Container(
       width: double.infinity,
       height: 100,
-      color: Colors.blue,
+      color: Colors.grey,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           SizedBox(
             width: 300,
             height: 50,
             child: TextField(
+              decoration:
+                  const InputDecoration(fillColor: Colors.white, filled: true),
               controller: textController,
             ),
           ),
