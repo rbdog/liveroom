@@ -1,3 +1,1 @@
 # Liveroom
-
-$ dart pub publish

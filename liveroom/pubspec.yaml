@@ -1,7 +1,7 @@
 name: liveroom
 description: Most Simple Wrapper of WebSocket Room
-version: 0.0.1
-homepage:
+version: 0.0.2
+repository: https://github.com/rbdog/liveroom
 
 environment:
   sdk: ">=2.18.2 <3.0.0"
