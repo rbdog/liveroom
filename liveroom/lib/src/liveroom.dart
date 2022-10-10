@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -71,12 +70,11 @@ class LiveroomConfig {
 class Liveroom {
   // WebSocket
   WebSocketChannel? _channel;
-  final _sendCtrl = StreamController<_LiveEvent>.broadcast();
-  final _joinCtrl = StreamController<String>.broadcast();
-  final _exitCtrl = StreamController<String>.broadcast();
-  final _errCtrl = StreamController<String>.broadcast();
+  var _sendCtrl = StreamController<_LiveEvent>.broadcast();
+  var _joinCtrl = StreamController<String>.broadcast();
+  var _exitCtrl = StreamController<String>.broadcast();
+  var _errCtrl = StreamController<String>.broadcast();
   final LiveroomConfig config;
-  final List<StreamSubscription> subsList = [];
   final void Function(String log)? logger;
 
   Liveroom({
@@ -99,6 +97,7 @@ class Liveroom {
     required String? optSeatId,
     required void Function(Object error) onError,
   }) {
+    logger?.call('_connect called');
     final seatId = optSeatId ?? const Uuid().v4();
     final url = Uri(
       scheme: config.scheme.rawValue,
@@ -117,13 +116,12 @@ class Liveroom {
     config.roomId = roomId;
     config.seatId = seatId;
     // WebSocket 受信
-    final subs = _channel?.stream.listen(
+    _channel?.stream.listen(
       (event) {
         final json = jsonDecode(event);
         final liveEvent = _LiveEvent.fromJson(json);
         switch (liveEvent.bodyType) {
           case _BodyType.join:
-            print('ここには来ました');
             _joinCtrl.sink.add(liveEvent.seatId);
             break;
           case _BodyType.message:
@@ -138,6 +136,7 @@ class Liveroom {
       },
       cancelOnError: true,
       onError: (Object error) {
+        logger?.call('ConnectingError: ${error.toString()}');
         onError(error);
       },
       onDone: () {
@@ -145,9 +144,6 @@ class Liveroom {
         _exitCtrl.sink.add(seatId);
       },
     );
-    if (subs != null) {
-      subsList.add(subs);
-    }
   }
 
   // 既にルームに参加中かどうか
@@ -162,9 +158,11 @@ class Liveroom {
 
   // ルームを作成
   Future<void> create({required String roomId, String? seatId}) async {
+    logger?.call('create called');
     if (isJoined) {
-      logger?.call('exited old room');
+      logger?.call('exiting old room ...');
       await exit();
+      logger?.call('exited old room');
     }
     _connect(
       '/create',
@@ -178,9 +176,11 @@ class Liveroom {
 
   // ルームに参加
   Future<void> join({required String roomId, String? seatId}) async {
+    logger?.call('join called');
     if (isJoined) {
-      logger?.call('exited old room');
+      logger?.call('exiting old room ...');
       await exit();
+      logger?.call('exited old room');
     }
     _connect(
       '/join',
@@ -194,15 +194,16 @@ class Liveroom {
 
   // 誰かが入室した時
   StreamSubscription onJoin(void Function(String seatId) process) {
+    logger?.call('onJoin called');
     final subs = _joinCtrl.stream.listen((body) {
       process(body);
     });
-    subsList.add(subs);
     return subs;
   }
 
   // メッセージをルーム内全員に送信
   void send({required String message}) {
+    logger?.call('send called');
     if (!isJoined) {
       logger?.call('Not joined Room');
       return;
@@ -214,19 +215,16 @@ class Liveroom {
   StreamSubscription receive(
     void Function(String seatId, String message) process,
   ) {
+    logger?.call('receive called');
     final subs = _sendCtrl.stream.listen((liveEvent) {
       process(liveEvent.seatId, liveEvent.body);
     });
-    subsList.add(subs);
     return subs;
   }
 
   // ルームを退出
   Future<void> exit() async {
-    for (final subs in subsList) {
-      await subs.cancel();
-    }
-    subsList.clear();
+    logger?.call('exit called');
     _channel?.sink.close();
     _channel = null;
     config.roomId = null;
@@ -234,19 +232,35 @@ class Liveroom {
 
   // 誰かが退出した時
   StreamSubscription onExit(void Function(String seatId) process) {
+    logger?.call('onExit called');
     final subs = _exitCtrl.stream.listen((body) {
       process(body);
     });
-    subsList.add(subs);
     return subs;
   }
 
   // エラーがあった時
   StreamSubscription onError(void Function(String errorMessage) process) {
+    logger?.call('onError called');
     final subs = _errCtrl.stream.listen((errString) {
       process(errString);
     });
-    subsList.add(subs);
     return subs;
+  }
+
+  /// * RESET ALL Liveroom state
+  Future<void> reset() async {
+    logger?.call('reset called');
+    _sendCtrl.sink.close();
+    _joinCtrl.sink.close();
+    _exitCtrl.sink.close();
+    _errCtrl.sink.close();
+    _sendCtrl = StreamController<_LiveEvent>.broadcast();
+    _joinCtrl = StreamController<String>.broadcast();
+    _exitCtrl = StreamController<String>.broadcast();
+    _errCtrl = StreamController<String>.broadcast();
+    _channel?.sink.close();
+    _channel = null;
+    config.roomId = null;
   }
 }

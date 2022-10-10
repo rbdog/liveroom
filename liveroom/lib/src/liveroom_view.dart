@@ -34,10 +34,8 @@ class _LiveroomViewState extends State<LiveroomView> {
   @override
   void initState() {
     super.initState();
-    widget.liveroom.logger?.call('LiveroomView init state');
+    widget.liveroom.logger?.call('LiveroomView initState');
     final joinSubs = widget.liveroom.onJoin((seatId) {
-      print('ここには来ました 2 trueであってほしい');
-      print(widget.onJoin != null);
       widget.onJoin?.call(seatId);
     });
     final receiveSubs = widget.liveroom.receive((seatId, message) {

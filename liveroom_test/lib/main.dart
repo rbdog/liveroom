@@ -9,9 +9,7 @@ void main() {
   runApp(app);
 }
 
-final liveroom = Liveroom(logger: (log) {
-  print(log);
-});
+final liveroom = Liveroom(logger: print);
 
 class CreateJoinView extends StatelessWidget {
   const CreateJoinView({Key? key}) : super(key: key);
@@ -44,7 +42,6 @@ class CreateJoinView extends StatelessWidget {
     return LiveroomView(
       liveroom: liveroom,
       onJoin: (seatId) {
-        print('ここまできた');
         if (liveroom.mySeatId == seatId) {
           pushToMessageRoom(context);
         }

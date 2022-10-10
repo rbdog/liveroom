@@ -64,6 +64,8 @@ const JoinResult = {
 const SendResult = {
   roomNotFound: 0,
   sent: 1,
+  notReadyConnecting: 2,
+  alreadyClosed: 3,
 };
 
 const ExitResult = {
@@ -139,8 +141,18 @@ export class Liveroom {
     }
     // 全員に送信
     for (const seat of room.seats) {
-      const json = JSON.stringify(liveEvent);
-      seat.socket.send(json);
+      if (seat.socket.readyState == WebSocket.CONNECTING) {
+        // まだ接続中
+        return SendResult.notReadyConnecting;
+      } else if (seat.socket.readyState == WebSocket.OPEN) {
+        // 接続できている
+        const json = JSON.stringify(liveEvent);
+        seat.socket.send(json);
+      } else {
+        // 既に切断されていた
+        this.exit(room_id, liveEvent.seat_id);
+        return SendResult.alreadyClosed;
+      }
     }
     return SendResult.sent;
   }
