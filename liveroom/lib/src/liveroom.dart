@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -109,7 +110,7 @@ class Liveroom {
         'seat_id': seatId,
       },
     );
-    logger?.call('WebSocket URL: ${url.toString()}');
+    logger?.call('Connecting: ${url.toString()}');
     _channel = WebSocketChannel.connect(url);
 
     // save roomId, seatId
@@ -122,6 +123,7 @@ class Liveroom {
         final liveEvent = _LiveEvent.fromJson(json);
         switch (liveEvent.bodyType) {
           case _BodyType.join:
+            print('ここには来ました');
             _joinCtrl.sink.add(liveEvent.seatId);
             break;
           case _BodyType.message:
@@ -148,7 +150,7 @@ class Liveroom {
     }
   }
 
-  // 既に参加中のルームがあるかどうか
+  // 既にルームに参加中かどうか
   bool get isJoined {
     return _channel != null;
   }
@@ -159,9 +161,10 @@ class Liveroom {
   }
 
   // ルームを作成
-  create({required String roomId, String? seatId}) {
+  Future<void> create({required String roomId, String? seatId}) async {
     if (isJoined) {
-      return Future.error('already joined room');
+      logger?.call('exited old room');
+      await exit();
     }
     _connect(
       '/create',
@@ -174,9 +177,10 @@ class Liveroom {
   }
 
   // ルームに参加
-  join({required String roomId, String? seatId}) {
+  Future<void> join({required String roomId, String? seatId}) async {
     if (isJoined) {
-      return Future.error('already joined room');
+      logger?.call('exited old room');
+      await exit();
     }
     _connect(
       '/join',
@@ -189,11 +193,12 @@ class Liveroom {
   }
 
   // 誰かが入室した時
-  void onJoin(void Function(String seatId) process) {
+  StreamSubscription onJoin(void Function(String seatId) process) {
     final subs = _joinCtrl.stream.listen((body) {
       process(body);
     });
     subsList.add(subs);
+    return subs;
   }
 
   // メッセージをルーム内全員に送信
@@ -206,11 +211,14 @@ class Liveroom {
   }
 
   // メッセージを受け取った時の処理
-  void receive(void Function(String seatId, String message) process) {
+  StreamSubscription receive(
+    void Function(String seatId, String message) process,
+  ) {
     final subs = _sendCtrl.stream.listen((liveEvent) {
       process(liveEvent.seatId, liveEvent.body);
     });
     subsList.add(subs);
+    return subs;
   }
 
   // ルームを退出
@@ -225,18 +233,20 @@ class Liveroom {
   }
 
   // 誰かが退出した時
-  void onExit(void Function(String seatId) process) {
+  StreamSubscription onExit(void Function(String seatId) process) {
     final subs = _exitCtrl.stream.listen((body) {
       process(body);
     });
     subsList.add(subs);
+    return subs;
   }
 
   // エラーがあった時
-  void onError(void Function(String errorMessage) process) {
+  StreamSubscription onError(void Function(String errorMessage) process) {
     final subs = _errCtrl.stream.listen((errString) {
       process(errString);
     });
     subsList.add(subs);
+    return subs;
   }
 }

@@ -1,6 +1,7 @@
 //
 // * LiveroomView
 //
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:liveroom/liveroom.dart';
 
@@ -21,36 +22,44 @@ class LiveroomView extends StatefulWidget {
   final Widget child;
 
   @override
+  // ignore: library_private_types_in_public_api
   _LiveroomViewState createState() {
     return _LiveroomViewState();
   }
 }
 
 class _LiveroomViewState extends State<LiveroomView> {
-  final List<String> messages = [];
-
-  Widget itemBuilder(BuildContext context, int index) {
-    return Text(messages[index]);
-  }
+  final List<StreamSubscription> subsList = [];
 
   @override
   void initState() {
     super.initState();
-    widget.liveroom.onJoin((seatId) {
+    widget.liveroom.logger?.call('LiveroomView init state');
+    final joinSubs = widget.liveroom.onJoin((seatId) {
+      print('ここには来ました 2 trueであってほしい');
+      print(widget.onJoin != null);
       widget.onJoin?.call(seatId);
     });
-    widget.liveroom.receive((seatId, message) {
+    final receiveSubs = widget.liveroom.receive((seatId, message) {
       widget.onMessage?.call(seatId, message);
     });
-    widget.liveroom.onExit((seatId) {
+    final exitSubs = widget.liveroom.onExit((seatId) {
       widget.onExit?.call(seatId);
+    });
+    setState(() {
+      subsList.add(receiveSubs);
+      subsList.add(joinSubs);
+      subsList.add(exitSubs);
     });
   }
 
   @override
   void dispose() {
-    print('will dispose');
-    widget.liveroom.exit();
+    widget.liveroom.logger?.call('LiveroomView dispose');
+    for (final subs in subsList) {
+      subs.cancel();
+    }
+    subsList.clear();
     super.dispose();
   }
 

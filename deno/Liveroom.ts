@@ -78,6 +78,11 @@ type Logger = (log: string) => void;
 export class Liveroom {
   // ルーム一覧
   rooms: Map<string, Room> = new Map();
+  logger: Logger | null;
+
+  constructor(logger: Logger | null = null) {
+    this.logger = logger;
+  }
 
   // 新しいルームを作成
   create(room_id: string, seat: Seat): number {
@@ -142,6 +147,7 @@ export class Liveroom {
 
   // クライアント1人ずつに対する処理
   clientHandler(room_id: string, seat: Seat) {
+    this.logger?.(`New join => Room: ${room_id}, Seat: ${seat}`);
     // クライアントが接続したとき
     seat.socket.onopen = () => {
       // 送信するメッセージ
@@ -242,7 +248,9 @@ export class LiveroomServer {
   // API ルーター
   router = new ApiRouter();
   // LiveRoom
-  liveroom = new Liveroom();
+  liveroom = new Liveroom((log) => {
+    console.log(log);
+  });
   // Config
   config?: LiveroomServerConfig;
 
@@ -251,7 +259,7 @@ export class LiveroomServer {
   }
 
   // 起動
-  run(logger: Logger | null = null) {
+  run() {
     const rootPath = this.config?.rootPath ?? defaultConfig.rootPath!;
     this.router
       .get(rootPath + "/create", (req) => {
@@ -264,8 +272,6 @@ export class LiveroomServer {
     const port = this.config?.port ?? defaultConfig.port!;
     const server = new ApiRouterServer(this.router, { port: port });
     server.run();
-    if (logger != null) {
-      logger(`running on port ${port}`);
-    }
+    this.liveroom.logger?.(`running on port ${port}`);
   }
 }
