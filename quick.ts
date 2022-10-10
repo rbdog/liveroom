@@ -1,4 +1,4 @@
-// deno run --allow-net https://deno.land/x/liveroom/demo.ts
+// deno run --allow-net https://deno.land/x/liveroom/quick.ts
 import { LiveroomServer } from "./deno/Liveroom.ts";
 const server = new LiveroomServer();
 server.run();
