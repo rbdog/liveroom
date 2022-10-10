@@ -4,7 +4,7 @@
 
 // 汎用 APIルーター
 
-type ApiProcess = (req: Deno.RequestEvent, url: URL) => Response;
+type ApiProcess = (req: Deno.RequestEvent) => Response;
 
 type ApiRoute = {
   method: string;
@@ -56,7 +56,7 @@ export class ApiRouterServer {
     const url = new URL(req.request.url);
     for (const route of this.router.routes) {
       if (req.request.method === route.method && url.pathname === route.path) {
-        const res = route.process(req, url);
+        const res = route.process(req);
         req.respondWith(res);
       }
     }

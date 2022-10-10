@@ -1,19 +1,17 @@
+
 # Live Room
 
 - Simple WebSocket Room Server
 - for **Flutter App** (and others)
 
+![Header](https://github.com/rbdog/liveroom/blob/main/static/img/liveroom-header.png?raw=true)
 
-## Deno (run server)
+## Quick Start
 
-$ deno run --allow-net main.ts
+localhost
 
-```main.ts
-// main.ts
-import { Liveroom } from "https://deno.land/x/liveroom/mod.ts";
-const liveroom = new Liveroom();
-liveroom.run();
-console.log("Liveroom is running ...");
+```shell
+$ deno run --allow-net https://deno.land/x/liveroom/quick.ts
 ```
 
 ## Flutter (client app)
@@ -25,12 +23,12 @@ $ flutter pub add liveroom
 // main.dart
 import 'package:flutter/material.dart';
 import 'package:liveroom/liveroom.dart';
-final liveroom = Liveroom();
+
 void main() {
-  final app = LiveroomTestApp(liveroom);
-  runApp(app);
+  runApp(LiveroomQuickApp());
 }
 ```
 
-modr info  
+package site  
 https://pub.dev/packages/liveroom
+

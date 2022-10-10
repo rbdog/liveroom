@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:liveroom/src/liveroom.dart';
+import 'package:liveroom/src/liveroom_view.dart';
 
 //
 // * LiveroomTestApp
 //
-class LiveroomTestApp extends StatelessWidget {
-  const LiveroomTestApp(
-    this.liveroom, {
+class LiveroomQuickApp extends StatelessWidget {
+  LiveroomQuickApp({
     Key? key,
   }) : super(key: key);
 
-  final Liveroom liveroom;
+  final liveroom = Liveroom();
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +38,8 @@ class _CreateJoinView extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         ElevatedButton(
-          onPressed: () {
-            liveroom.exit();
+          onPressed: () async {
+            await liveroom.exit();
             liveroom.onJoin(
               (seatId) {
                 if (liveroom.mySeatId == seatId) {
@@ -49,11 +49,11 @@ class _CreateJoinView extends StatelessWidget {
             );
             liveroom.create(roomId: 'ROOM-01');
           },
-          child: Text('Create \n Room'),
+          child: const Text('Create \n Room'),
         ),
         ElevatedButton(
-          onPressed: () {
-            liveroom.exit();
+          onPressed: () async {
+            await liveroom.exit();
             liveroom.onJoin(
               (seatId) {
                 if (liveroom.mySeatId == seatId) {
@@ -63,7 +63,7 @@ class _CreateJoinView extends StatelessWidget {
             );
             liveroom.join(roomId: 'ROOM-01');
           },
-          child: Text('Join \n Room'),
+          child: const Text('Join \n Room'),
         ),
       ],
     );
@@ -112,32 +112,6 @@ class _MessageRoomState extends State<_MessageRoomView> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    widget.liveroom.onJoin((seatId) {
-      setState(() {
-        messages.add('joined');
-      });
-    });
-    widget.liveroom.receive((seatId, message) {
-      setState(() {
-        messages.add(message);
-      });
-    });
-    widget.liveroom.onExit((seatId) {
-      setState(() {
-        messages.add('exited');
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    widget.liveroom.exit();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final textController = TextEditingController();
     final topBar = Container(
@@ -152,9 +126,9 @@ class _MessageRoomState extends State<_MessageRoomView> {
               widget.liveroom.exit();
               Navigator.of(context).pop();
             },
-            child: Text('Exit'),
+            child: const Text('Exit'),
           ),
-          SizedBox(width: 300, height: 50),
+          const SizedBox(width: 300, height: 50),
         ],
       ),
     );
@@ -169,17 +143,18 @@ class _MessageRoomState extends State<_MessageRoomView> {
             width: 300,
             height: 50,
             child: TextField(
-              decoration:
-                  const InputDecoration(fillColor: Colors.white, filled: true),
+              decoration: const InputDecoration(
+                fillColor: Colors.white,
+                filled: true,
+              ),
               controller: textController,
             ),
           ),
           ElevatedButton(
             onPressed: () {
-              debugPrint('画面から　送ります');
               widget.liveroom.send(message: textController.text);
             },
-            child: Text('Send'),
+            child: const Text('Send'),
           ),
         ],
       ),
@@ -199,8 +174,28 @@ class _MessageRoomState extends State<_MessageRoomView> {
       ],
     );
 
-    return Scaffold(
+    final scaffold = Scaffold(
       body: body,
+    );
+
+    return LiveroomView(
+      liveroom: widget.liveroom,
+      onJoin: (seatId) {
+        setState(() {
+          messages.add('joined');
+        });
+      },
+      onMessage: ((seatId, message) {
+        setState(() {
+          messages.add(message);
+        });
+      }),
+      onExit: ((seatId) {
+        setState(() {
+          messages.add('exited');
+        });
+      }),
+      child: scaffold,
     );
   }
 }

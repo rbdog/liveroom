@@ -178,7 +178,8 @@ export class Liveroom {
     };
   }
 
-  callCreateApi(req: Deno.RequestEvent, url: URL): Response {
+  callCreateApi(req: Deno.RequestEvent): Response {
+    const url = new URL(req.request.url);
     const keycardConfig = getKeycardConfig(url.searchParams);
     if (keycardConfig === null) {
       return new Response("Error: パラメータが不足しています");
@@ -202,7 +203,8 @@ export class Liveroom {
     }
   }
 
-  callJoinApi(req: Deno.RequestEvent, url: URL): Response {
+  callJoinApi(req: Deno.RequestEvent): Response {
+    const url = new URL(req.request.url);
     const keycardConfig = getKeycardConfig(url.searchParams);
     if (keycardConfig === null) {
       return new Response("Error: パラメータが不足しています");
@@ -252,11 +254,11 @@ export class LiveroomServer {
   run(logger: Logger | null = null) {
     const rootPath = this.config?.rootPath ?? defaultConfig.rootPath!;
     this.router
-      .get(rootPath + "/create", (req, url) => {
-        return this.liveroom.callCreateApi(req, url);
+      .get(rootPath + "/create", (req) => {
+        return this.liveroom.callCreateApi(req);
       })
-      .get(rootPath + "/join", (req, url) => {
-        return this.liveroom.callJoinApi(req, url);
+      .get(rootPath + "/join", (req) => {
+        return this.liveroom.callJoinApi(req);
       });
 
     const port = this.config?.port ?? defaultConfig.port!;

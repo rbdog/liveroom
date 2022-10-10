@@ -16,39 +16,29 @@ $ curl -fsSL https://deno.land/x/install/install.sh | sh
 $ irm https://deno.land/install.ps1 | iex
 ```
 
-2. create TypeScript file `main.ts`
-
-```main.ts
-import { Liveroom } from "https://deno.land/x/liveroom/mod.ts";
-const liveroom = new Liveroom();
-liveroom.run();
-```
-
-3. run
+2. run
 
 ```
-$ deno run --allow-net main.ts
+$ deno run --allow-net https://deno.land/x/liveroom/quick.ts
 ```
 
 <br />
 
 ## 2. Flutter App
 
-```
+```main.dart
 import 'package:flutter/material.dart';
 import 'package:liveroom/liveroom.dart';
 
-final liveroom = Liveroom();
-
 void main() {
-  final app = LiveroomTestApp(liveroom);
-  runApp(app);
+  runApp(LiveroomQuickApp());
 }
 ```
 
 <br />
 
-more functions  
+simple interfaces
+- `final liveroom = Liveroom();`
 - liveroom.create(roomId: '0001');
 - liveroom.join(roomId: '0001');
 - liveroom.send(message: 'Hello');
