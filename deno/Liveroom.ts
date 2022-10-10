@@ -147,7 +147,7 @@ export class Liveroom {
 
   // クライアント1人ずつに対する処理
   clientHandler(room_id: string, seat: Seat) {
-    this.logger?.(`New join => Room: ${room_id}, Seat: ${seat}`);
+    this.logger?.(`New join => Room: ${room_id}, Seat: ${seat.id}`);
     // クライアントが接続したとき
     seat.socket.onopen = () => {
       // 送信するメッセージ
