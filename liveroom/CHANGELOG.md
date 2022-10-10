@@ -21,3 +21,7 @@
 ## 0.0.6
 
 - Fix Layout
+
+## 1.0.0
+
+- Stable release

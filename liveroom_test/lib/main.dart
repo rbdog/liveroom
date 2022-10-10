@@ -2,80 +2,200 @@ import 'package:flutter/material.dart';
 import 'package:liveroom/liveroom.dart';
 
 void main() {
-  const app = MaterialApp(
+  // アプリ全体の設定
+  final app = MaterialApp(
     debugShowCheckedModeBanner: false,
-    home: CreateJoinView(),
+    home: const HomePage(),
+    theme: ThemeData(
+      textTheme: const TextTheme(
+        bodyText1: TextStyle(fontSize: 24.0),
+        bodyText2: TextStyle(fontSize: 24.0),
+        button: TextStyle(fontSize: 24.0),
+        subtitle1: TextStyle(fontSize: 24.0),
+        subtitle2: TextStyle(fontSize: 24.0),
+      ),
+    ),
   );
   runApp(app);
 }
 
-final liveroom = Liveroom(logger: print);
+//
+// * ライブルームのインスタンス
+//
+final liveroom = Liveroom();
 
-class CreateJoinView extends StatelessWidget {
-  const CreateJoinView({Key? key}) : super(key: key);
+/// ホーム画面
+class HomePage extends StatelessWidget {
+  const HomePage({Key? key}) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    final buttonsRow = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        ElevatedButton(
-          onPressed: () {
-            liveroom.create(roomId: 'ROOM-01');
-          },
-          child: const Text('Create \n Room'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            liveroom.join(roomId: 'ROOM-01');
-          },
-          child: const Text('Join \n Room'),
-        ),
-      ],
-    );
-    final scaffold = Scaffold(
-      body: Center(
-        child: buttonsRow,
-      ),
-    );
-
-    return LiveroomView(
-      liveroom: liveroom,
-      onJoin: (seatId) {
-        if (liveroom.mySeatId == seatId) {
-          pushToMessageRoom(context);
-        }
-      },
-      child: scaffold,
-    );
-  }
-
-  void pushToMessageRoom(BuildContext context) {
+  /// メッセージ画面へ進む
+  void pushToMessagePage(BuildContext context) {
     final route = MaterialPageRoute(
-      builder: (context) => const MessageRoomView(),
+      builder: (context) => const MessagePage(),
     );
     Navigator.of(context).push(route);
   }
-}
-
-class MessageRoomView extends StatefulWidget {
-  const MessageRoomView({Key? key}) : super(key: key);
 
   @override
-  MessageRoomState createState() => MessageRoomState();
+  Widget build(BuildContext context) {
+    final layout = HomePageLayout(
+      // ルームを作成をタップ
+      onTapCreate: () {
+        //
+        // * ルームを作成したいとき = create
+        //
+        liveroom.create(roomId: '0001');
+      },
+      // ルームに参加をタップ
+      onTapJoin: () {
+        //
+        // * ルームに参加したいとき = join
+        //
+        liveroom.join(roomId: '0001');
+      },
+    );
+
+    //
+    // * ライブルームView を使ってメッセージを受け取る
+    //
+    return LiveroomView(
+      liveroom: liveroom,
+      //
+      // * 誰かがルームに参加したとき = onJoin
+      //
+      onJoin: (seatId) {
+        // 自分だったときはメッセージ画面に進む
+        if (liveroom.mySeatId == seatId) {
+          pushToMessagePage(context);
+        }
+      },
+      child: layout,
+    );
+  }
 }
 
-class MessageRoomState extends State<MessageRoomView> {
+/// メッセージ画面
+class MessagePage extends StatefulWidget {
+  const MessagePage({Key? key}) : super(key: key);
+
+  @override
+  MessagePageState createState() => MessagePageState();
+}
+
+class MessagePageState extends State<MessagePage> {
   final List<String> messages = [];
 
-  Widget itemBuilder(BuildContext context, int index) {
-    return Text(messages[index]);
-  }
-
+  // メッセージを表示する
   void printMessage(String message) {
     setState(() {
       messages.add(message);
     });
+  }
+
+  // 前の画面に戻る
+  void popPage(BuildContext context) {
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = MessagePageLayout(
+      messages: messages,
+
+      // ルーム退出をタップ
+      onTapExit: (() {
+        //
+        // * ルームを退出したいとき = exit
+        //
+        liveroom.exit();
+
+        // 前の画面に戻る
+        popPage(context);
+      }),
+      onTapSend: ((text) {
+        liveroom.send(message: text);
+      }),
+    );
+
+    //
+    // * ライブルームView を使ってメッセージを受け取る
+    //
+    return LiveroomView(
+      liveroom: liveroom,
+      //
+      // * 誰かがルームに参加したとき = onJoin
+      //
+      onJoin: (seatId) {
+        // メッセージを表示する
+        printMessage('参加しました');
+      },
+      //
+      // * 誰かがメッセージを送信したとき = onReceive
+      //
+      onReceive: ((seatId, message) {
+        // メッセージを表示する
+        printMessage(message);
+      }),
+      //
+      // * 誰かがルームを退出したとき = onExit
+      //
+      onExit: ((seatId) {
+        // メッセージを表示する
+        printMessage('退出しました');
+      }),
+      child: layout,
+    );
+  }
+}
+
+/// ホーム画面のレイアウト
+class HomePageLayout extends StatelessWidget {
+  const HomePageLayout({
+    required this.onTapCreate,
+    required this.onTapJoin,
+    Key? key,
+  }) : super(key: key);
+
+  final void Function() onTapCreate;
+  final void Function() onTapJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton(
+              onPressed: onTapCreate,
+              child: const Text('ルーム\n作成'),
+            ),
+            ElevatedButton(
+              onPressed: onTapJoin,
+              child: const Text('ルーム\n参加'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// メッセージ画面のレイアウト
+class MessagePageLayout extends StatelessWidget {
+  const MessagePageLayout({
+    required this.messages,
+    required this.onTapExit,
+    required this.onTapSend,
+    Key? key,
+  }) : super(key: key);
+
+  final List<String> messages;
+  final void Function() onTapExit;
+  final void Function(String text) onTapSend;
+
+  Widget itemBuilder(BuildContext context, int index) {
+    return Text(messages[index]);
   }
 
   @override
@@ -84,25 +204,22 @@ class MessageRoomState extends State<MessageRoomView> {
     final topBar = Container(
       width: double.infinity,
       height: 100,
-      color: Colors.grey,
+      color: Colors.grey[300],
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
+          const SizedBox(width: 50, height: 50),
           ElevatedButton(
-            onPressed: () {
-              liveroom.exit();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Exit'),
+            onPressed: onTapExit,
+            child: const Text('ルーム退出'),
           ),
-          const SizedBox(width: 300, height: 50),
         ],
       ),
     );
     final bottomBar = Container(
       width: double.infinity,
       height: 100,
-      color: Colors.grey,
+      color: Colors.grey[300],
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -118,10 +235,8 @@ class MessageRoomState extends State<MessageRoomView> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              liveroom.send(message: textController.text);
-            },
-            child: const Text('Send'),
+            onPressed: () => onTapSend(textController.text),
+            child: const Text('送信'),
           ),
         ],
       ),
@@ -134,7 +249,7 @@ class MessageRoomState extends State<MessageRoomView> {
       ),
     );
 
-    final scaffold = Scaffold(
+    return Scaffold(
       body: Column(
         children: [
           topBar,
@@ -142,20 +257,6 @@ class MessageRoomState extends State<MessageRoomView> {
           bottomBar,
         ],
       ),
-    );
-
-    return LiveroomView(
-      liveroom: liveroom,
-      onJoin: (seatId) {
-        printMessage('joined');
-      },
-      onMessage: ((seatId, message) {
-        printMessage(message);
-      }),
-      onExit: ((seatId) {
-        printMessage('exited');
-      }),
-      child: scaffold,
     );
   }
 }

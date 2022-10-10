@@ -1,23 +1,27 @@
-//
-// * LiveroomView
-//
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:liveroom/liveroom.dart';
 
+/// LiveroomView can receive events
 class LiveroomView extends StatefulWidget {
   const LiveroomView({
     required this.liveroom,
-    required this.child,
     this.onJoin,
-    this.onMessage,
+    this.onReceive,
     this.onExit,
+    required this.child,
     Key? key,
   }) : super(key: key);
 
   final Liveroom liveroom;
+
+  /// Someone Joined
   final void Function(String seatId)? onJoin;
-  final void Function(String seatId, String message)? onMessage;
+
+  /// Someone Sent message
+  final void Function(String seatId, String message)? onReceive;
+
+  /// Someone Exited
   final void Function(String seatId)? onExit;
   final Widget child;
 
@@ -39,7 +43,7 @@ class _LiveroomViewState extends State<LiveroomView> {
       widget.onJoin?.call(seatId);
     });
     final receiveSubs = widget.liveroom.receive((seatId, message) {
-      widget.onMessage?.call(seatId, message);
+      widget.onReceive?.call(seatId, message);
     });
     final exitSubs = widget.liveroom.onExit((seatId) {
       widget.onExit?.call(seatId);

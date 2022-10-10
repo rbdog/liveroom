@@ -2,110 +2,170 @@ import 'package:flutter/material.dart';
 import 'package:liveroom/src/liveroom.dart';
 import 'package:liveroom/src/liveroom_view.dart';
 
-//
-// * LiveroomTestApp
-//
+/// Example app for Liveroom
 class LiveroomQuickApp extends StatelessWidget {
   LiveroomQuickApp({
     Key? key,
   }) : super(key: key);
 
-  final liveroom = Liveroom();
+  final liveroom = Liveroom(logger: print);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: _CreateJoinView(liveroom: liveroom),
+      home: _HomePage(liveroom),
+      theme: ThemeData(
+        textTheme: const TextTheme(
+          bodyText1: TextStyle(fontSize: 24.0),
+          bodyText2: TextStyle(fontSize: 24.0),
+          button: TextStyle(fontSize: 24.0),
+          subtitle1: TextStyle(fontSize: 24.0),
+          subtitle2: TextStyle(fontSize: 24.0),
+        ),
+      ),
     );
   }
 }
 
-//
-// * CreateJoinView
-//
-class _CreateJoinView extends StatelessWidget {
-  const _CreateJoinView({
-    required this.liveroom,
-    Key? key,
-  }) : super(key: key);
+/// Home Page
+class _HomePage extends StatelessWidget {
+  const _HomePage(this.liveroom, {Key? key}) : super(key: key);
 
   final Liveroom liveroom;
 
-  @override
-  Widget build(BuildContext context) {
-    final buttonsRow = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        ElevatedButton(
-          onPressed: () async {
-            await liveroom.exit();
-            liveroom.onJoin(
-              (seatId) {
-                if (liveroom.mySeatId == seatId) {
-                  pushToMessageRoom(context);
-                }
-              },
-            );
-            liveroom.create(roomId: 'ROOM-01');
-          },
-          child: const Text('Create \n Room'),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            await liveroom.exit();
-            liveroom.onJoin(
-              (seatId) {
-                if (liveroom.mySeatId == seatId) {
-                  pushToMessageRoom(context);
-                }
-              },
-            );
-            liveroom.join(roomId: 'ROOM-01');
-          },
-          child: const Text('Join \n Room'),
-        ),
-      ],
-    );
-    final body = Center(
-      child: buttonsRow,
-    );
-    return Scaffold(
-      body: body,
-    );
-  }
-
-  void pushToMessageRoom(
-    BuildContext context,
-  ) {
+  /// push to Message Page
+  void pushToMessagePage(BuildContext context) {
     final route = MaterialPageRoute(
-      builder: (context) => _MessageRoomView(
-        liveroom: liveroom,
-      ),
+      builder: (context) => _MessagePage(liveroom),
     );
     Navigator.of(context).push(route);
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = _HomePageLayout(
+      onTapCreate: () {
+        liveroom.create(roomId: '0001');
+      },
+      onTapJoin: () {
+        liveroom.join(roomId: '0001');
+      },
+    );
+
+    return LiveroomView(
+      liveroom: liveroom,
+      onJoin: (seatId) {
+        if (liveroom.mySeatId == seatId) {
+          pushToMessagePage(context);
+        }
+      },
+      child: layout,
+    );
+  }
 }
 
-//
-// * MessageRoomView
-//
-class _MessageRoomView extends StatefulWidget {
-  const _MessageRoomView({
-    required this.liveroom,
-    Key? key,
-  }) : super(key: key);
+/// Message Page
+class _MessagePage extends StatefulWidget {
+  const _MessagePage(this.liveroom, {Key? key}) : super(key: key);
 
   final Liveroom liveroom;
 
   @override
-  _MessageRoomState createState() {
-    return _MessageRoomState();
+  _MessagePageState createState() => _MessagePageState();
+}
+
+class _MessagePageState extends State<_MessagePage> {
+  final List<String> messages = [];
+
+  void printMessage(String message) {
+    setState(() {
+      messages.add(message);
+    });
+  }
+
+  void popPage(BuildContext context) {
+    Navigator.of(context).pop();
+  }
+
+  Liveroom get liveroom {
+    return widget.liveroom;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = _MessagePageLayout(
+      messages: messages,
+      onTapExit: (() {
+        liveroom.exit();
+        popPage(context);
+      }),
+      onTapSend: ((text) {
+        liveroom.send(message: text);
+      }),
+    );
+
+    return LiveroomView(
+      liveroom: liveroom,
+      onJoin: (seatId) {
+        printMessage('--- JOIN ---');
+      },
+      onReceive: ((seatId, message) {
+        printMessage(message);
+      }),
+      onExit: ((seatId) {
+        printMessage('--- EXIT ---');
+      }),
+      child: layout,
+    );
   }
 }
 
-class _MessageRoomState extends State<_MessageRoomView> {
-  final List<String> messages = [];
+/// Layout for HomePage
+class _HomePageLayout extends StatelessWidget {
+  const _HomePageLayout({
+    required this.onTapCreate,
+    required this.onTapJoin,
+    Key? key,
+  }) : super(key: key);
+
+  final void Function() onTapCreate;
+  final void Function() onTapJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton(
+              onPressed: onTapCreate,
+              child: const Text('Create\nRoom'),
+            ),
+            ElevatedButton(
+              onPressed: onTapJoin,
+              child: const Text('Join\nRoom'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Layout for MassagePage
+class _MessagePageLayout extends StatelessWidget {
+  const _MessagePageLayout({
+    required this.messages,
+    required this.onTapExit,
+    required this.onTapSend,
+    Key? key,
+  }) : super(key: key);
+
+  final List<String> messages;
+  final void Function() onTapExit;
+  final void Function(String text) onTapSend;
 
   Widget itemBuilder(BuildContext context, int index) {
     return Text(messages[index]);
@@ -117,25 +177,22 @@ class _MessageRoomState extends State<_MessageRoomView> {
     final topBar = Container(
       width: double.infinity,
       height: 100,
-      color: Colors.grey,
+      color: Colors.grey[300],
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
+          const SizedBox(width: 50, height: 50),
           ElevatedButton(
-            onPressed: () {
-              widget.liveroom.exit();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Exit'),
+            onPressed: onTapExit,
+            child: const Text('Exit Room'),
           ),
-          const SizedBox(width: 300, height: 50),
         ],
       ),
     );
     final bottomBar = Container(
       width: double.infinity,
       height: 100,
-      color: Colors.grey,
+      color: Colors.grey[300],
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
@@ -151,9 +208,7 @@ class _MessageRoomState extends State<_MessageRoomView> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              widget.liveroom.send(message: textController.text);
-            },
+            onPressed: () => onTapSend(textController.text),
             child: const Text('Send'),
           ),
         ],
@@ -166,36 +221,15 @@ class _MessageRoomState extends State<_MessageRoomView> {
         itemCount: messages.length,
       ),
     );
-    final body = Column(
-      children: [
-        topBar,
-        messageListView,
-        bottomBar,
-      ],
-    );
 
-    final scaffold = Scaffold(
-      body: body,
-    );
-
-    return LiveroomView(
-      liveroom: widget.liveroom,
-      onJoin: (seatId) {
-        setState(() {
-          messages.add('joined');
-        });
-      },
-      onMessage: ((seatId, message) {
-        setState(() {
-          messages.add(message);
-        });
-      }),
-      onExit: ((seatId) {
-        setState(() {
-          messages.add('exited');
-        });
-      }),
-      child: scaffold,
+    return Scaffold(
+      body: Column(
+        children: [
+          topBar,
+          messageListView,
+          bottomBar,
+        ],
+      ),
     );
   }
 }

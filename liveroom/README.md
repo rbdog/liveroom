@@ -16,11 +16,14 @@ $ curl -fsSL https://deno.land/x/install/install.sh | sh
 $ irm https://deno.land/install.ps1 | iex
 ```
 
-2. run
+2. run quick server
 
 ```
 $ deno run --allow-net https://deno.land/x/liveroom/quick.ts
 ```
+
+more info  
+https://github.com/rbdog/liveroom/blob/main/example/main.ts
 
 <br />
 
@@ -42,7 +45,7 @@ simple interfaces
 - liveroom.create(roomId: '0001');
 - liveroom.join(roomId: '0001');
 - liveroom.send(message: 'Hello');
-- liveroom.receive((seatId, message) => print(message));
+- liveroom.receive((seatId, message) {});
 - liveroom.exit();
 
 

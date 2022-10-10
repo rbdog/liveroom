@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
@@ -18,20 +16,15 @@ enum _BodyType {
   }
 }
 
-// ライブイベント
 class _LiveEvent {
-  // シートID
   final String seatId;
-  // join | message | exit
   final _BodyType bodyType;
-  // メッセージ本文
   final String body;
   _LiveEvent({
     required this.seatId,
     required this.bodyType,
     required this.body,
   });
-  // JSON 変換
   _LiveEvent.fromJson(Map<String, dynamic> json)
       : seatId = json['seat_id'],
         bodyType = _BodyType.from(rawValue: json['body_type']),
@@ -50,7 +43,7 @@ enum Scheme {
   const Scheme(this.rawValue);
 }
 
-class LiveroomConfig {
+class _LiveroomConfig {
   final Scheme scheme;
   final String host;
   final String rootPath;
@@ -58,7 +51,7 @@ class LiveroomConfig {
   String? roomId;
   String? seatId;
 
-  LiveroomConfig({
+  _LiveroomConfig({
     required this.scheme,
     required this.host,
     required this.rootPath,
@@ -66,15 +59,13 @@ class LiveroomConfig {
   });
 }
 
-// ライブルーム
 class Liveroom {
-  // WebSocket
   WebSocketChannel? _channel;
   var _sendCtrl = StreamController<_LiveEvent>.broadcast();
   var _joinCtrl = StreamController<String>.broadcast();
   var _exitCtrl = StreamController<String>.broadcast();
   var _errCtrl = StreamController<String>.broadcast();
-  final LiveroomConfig config;
+  final _LiveroomConfig _config;
   final void Function(String log)? logger;
 
   Liveroom({
@@ -83,14 +74,14 @@ class Liveroom {
     String rootPath = '/liveroom',
     int port = 5000,
     this.logger,
-  }) : config = LiveroomConfig(
+  }) : _config = _LiveroomConfig(
           scheme: scheme,
           host: host,
           rootPath: rootPath,
           port: port,
         );
 
-  // WebSocket接続
+  // connect WebSocket
   void _connect(
     String apiPath,
     String roomId, {
@@ -100,10 +91,10 @@ class Liveroom {
     logger?.call('_connect called');
     final seatId = optSeatId ?? const Uuid().v4();
     final url = Uri(
-      scheme: config.scheme.rawValue,
-      host: config.host,
-      path: config.rootPath + apiPath,
-      port: config.port,
+      scheme: _config.scheme.rawValue,
+      host: _config.host,
+      path: _config.rootPath + apiPath,
+      port: _config.port,
       queryParameters: {
         'room_id': roomId,
         'seat_id': seatId,
@@ -113,9 +104,9 @@ class Liveroom {
     _channel = WebSocketChannel.connect(url);
 
     // save roomId, seatId
-    config.roomId = roomId;
-    config.seatId = seatId;
-    // WebSocket 受信
+    _config.roomId = roomId;
+    _config.seatId = seatId;
+    // WebSocket Listen
     _channel?.stream.listen(
       (event) {
         final json = jsonDecode(event);
@@ -140,23 +131,21 @@ class Liveroom {
         onError(error);
       },
       onDone: () {
-        // 自分が disconnected
+        /// disconnected
         _exitCtrl.sink.add(seatId);
       },
     );
   }
 
-  // 既にルームに参加中かどうか
   bool get isJoined {
     return _channel != null;
   }
 
-  // 自分のシートID
   String? get mySeatId {
-    return config.seatId;
+    return _config.seatId;
   }
 
-  // ルームを作成
+  /// create Room
   Future<void> create({required String roomId, String? seatId}) async {
     logger?.call('create called');
     if (isJoined) {
@@ -174,7 +163,7 @@ class Liveroom {
     );
   }
 
-  // ルームに参加
+  /// join Room
   Future<void> join({required String roomId, String? seatId}) async {
     logger?.call('join called');
     if (isJoined) {
@@ -192,7 +181,7 @@ class Liveroom {
     );
   }
 
-  // 誰かが入室した時
+  /// listen for someone's join
   StreamSubscription onJoin(void Function(String seatId) process) {
     logger?.call('onJoin called');
     final subs = _joinCtrl.stream.listen((body) {
@@ -201,7 +190,7 @@ class Liveroom {
     return subs;
   }
 
-  // メッセージをルーム内全員に送信
+  // send message to the room
   void send({required String message}) {
     logger?.call('send called');
     if (!isJoined) {
@@ -211,7 +200,7 @@ class Liveroom {
     _channel?.sink.add(message);
   }
 
-  // メッセージを受け取った時の処理
+  /// listen for someone's message
   StreamSubscription receive(
     void Function(String seatId, String message) process,
   ) {
@@ -222,15 +211,15 @@ class Liveroom {
     return subs;
   }
 
-  // ルームを退出
+  // exit room
   Future<void> exit() async {
     logger?.call('exit called');
     _channel?.sink.close();
     _channel = null;
-    config.roomId = null;
+    _config.roomId = null;
   }
 
-  // 誰かが退出した時
+  /// listen for someone's exit
   StreamSubscription onExit(void Function(String seatId) process) {
     logger?.call('onExit called');
     final subs = _exitCtrl.stream.listen((body) {
@@ -239,7 +228,7 @@ class Liveroom {
     return subs;
   }
 
-  // エラーがあった時
+  /// listen for error
   StreamSubscription onError(void Function(String errorMessage) process) {
     logger?.call('onError called');
     final subs = _errCtrl.stream.listen((errString) {
@@ -261,6 +250,6 @@ class Liveroom {
     _errCtrl = StreamController<String>.broadcast();
     _channel?.sink.close();
     _channel = null;
-    config.roomId = null;
+    _config.roomId = null;
   }
 }
