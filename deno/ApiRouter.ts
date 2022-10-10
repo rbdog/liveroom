@@ -4,7 +4,7 @@
 
 // 汎用 APIルーター
 
-type ApiProcess = (req: Deno.RequestEvent, url: URL) => void;
+type ApiProcess = (req: Deno.RequestEvent, url: URL) => Response;
 
 type ApiRoute = {
   method: string;
@@ -33,17 +33,31 @@ export class ApiRouter {
     this.routes.push(route);
     return this;
   }
+}
 
-  //
-  // --- server ---
-  //
+type ApiRouterServerConfig = { port?: number };
+const defaultConfig: ApiRouterServerConfig = {
+  port: 5000,
+};
+
+export class ApiRouterServer {
+  // Router
+  router: ApiRouter;
+  // Config
+  config?: ApiRouterServerConfig;
+
+  constructor(router: ApiRouter, config?: ApiRouterServerConfig) {
+    this.router = router;
+    this.config = config;
+  }
 
   // Http リクエスト 1つずつに対する処理
   requestHandler(req: Deno.RequestEvent) {
     const url = new URL(req.request.url);
-    for (const route of this.routes) {
+    for (const route of this.router.routes) {
       if (req.request.method === route.method && url.pathname === route.path) {
-        route.process(req, url);
+        const res = route.process(req, url);
+        req.respondWith(res);
       }
     }
   }
@@ -57,7 +71,8 @@ export class ApiRouter {
   }
 
   // 起動
-  async listen(port: number) {
+  async run() {
+    const port = this.config?.port ?? defaultConfig.port!;
     const server = Deno.listen({ port: port });
     for await (const conn of server) {
       this.connHandler(conn);

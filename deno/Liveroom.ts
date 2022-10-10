@@ -2,7 +2,7 @@
 // RoomServer.ts
 //
 
-import { ApiRouter } from "./ApiRouter.ts";
+import { ApiRouter, ApiRouterServer } from "./ApiRouter.ts";
 
 // イベント Body Type
 const BodyType = {
@@ -28,12 +28,6 @@ type Seat = {
 type Room = {
   id: string;
   seats: Seat[];
-};
-
-type LiveroomConfig = { port?: number; rootPath?: string };
-const defaultConfig: LiveroomConfig = {
-  port: 5000,
-  rootPath: "/liveroom",
 };
 
 /// キーカード作成に必要な情報
@@ -78,18 +72,12 @@ const ExitResult = {
   exitAndDeleteRoom: 2,
 };
 
+type Logger = (log: string) => void;
+
 // ルームサーバー
 export class Liveroom {
   // ルーム一覧
   rooms: Map<string, Room> = new Map();
-  // API ルーター
-  router = new ApiRouter();
-  // Config
-  config?: LiveroomConfig;
-
-  constructor(config?: LiveroomConfig) {
-    this.config = config;
-  }
 
   // 新しいルームを作成
   create(room_id: string, seat: Seat): number {
@@ -190,71 +178,90 @@ export class Liveroom {
     };
   }
 
+  callCreateApi(req: Deno.RequestEvent, url: URL): Response {
+    const keycardConfig = getKeycardConfig(url.searchParams);
+    if (keycardConfig === null) {
+      return new Response("Error: パラメータが不足しています");
+    }
+    // WebSocket で接続
+    const { socket, response } = Deno.upgradeWebSocket(req.request);
+    // ルーム作成
+    const seat: Seat = {
+      id: keycardConfig.seatId,
+      socket: socket,
+    };
+    const result = this.create(keycardConfig.roomId, seat);
+    if (result === CreateResult.alreadyExist) {
+      // 失敗
+      return new Response("Error: 既に同じルームIDが存在します");
+    } else if (result === CreateResult.created) {
+      this.clientHandler(keycardConfig.roomId, seat);
+      return response;
+    } else {
+      return new Response("Error: 予期せぬエラーです");
+    }
+  }
+
+  callJoinApi(req: Deno.RequestEvent, url: URL): Response {
+    const keycardConfig = getKeycardConfig(url.searchParams);
+    if (keycardConfig === null) {
+      return new Response("Error: パラメータが不足しています");
+    }
+    // WebSocket で接続
+    const { socket, response } = Deno.upgradeWebSocket(req.request);
+    // ルーム参加
+    const seat: Seat = {
+      id: keycardConfig.seatId,
+      socket: socket,
+    };
+    const result = this.join(keycardConfig.roomId, seat);
+    if (result === JoinResult.roomNotFound) {
+      // 失敗
+      return new Response("Error: ルームIDが見つかりません");
+    } else if (result === JoinResult.seatAlreadyFilled) {
+      // 失敗
+      return new Response("Error: 既にシートが埋まっています");
+    } else if (result === JoinResult.joined) {
+      this.clientHandler(keycardConfig.roomId, seat);
+      return response;
+    } else {
+      return new Response("Error: 予期せぬエラーです");
+    }
+  }
+}
+
+type LiveroomServerConfig = { port?: number; rootPath?: string };
+const defaultConfig: LiveroomServerConfig = {
+  port: 5000,
+  rootPath: "/liveroom",
+};
+
+export class LiveroomServer {
+  // API ルーター
+  router = new ApiRouter();
+  // LiveRoom
+  liveroom = new Liveroom();
+  // Config
+  config?: LiveroomServerConfig;
+
+  constructor(config?: LiveroomServerConfig) {
+    this.config = config;
+  }
+
   // 起動
-  run(logger: ((log: string) => void) | null = null) {
+  run(logger: Logger | null = null) {
     const rootPath = this.config?.rootPath ?? defaultConfig.rootPath!;
     this.router
       .get(rootPath + "/create", (req, url) => {
-        const keycardConfig = getKeycardConfig(url.searchParams);
-        if (keycardConfig === null) {
-          req.respondWith(new Response("Error: パラメータが不足しています"));
-          return;
-        }
-        // WebSocket で接続
-        const { socket, response } = Deno.upgradeWebSocket(req.request);
-        // ルーム作成
-        const seat: Seat = {
-          id: keycardConfig.seatId,
-          socket: socket,
-        };
-        const result = this.create(keycardConfig.roomId, seat);
-        if (result === CreateResult.alreadyExist) {
-          // 失敗
-          req.respondWith(new Response("Error: 既に同じルームIDが存在します"));
-          return;
-        } else if (result === CreateResult.created) {
-          this.clientHandler(keycardConfig.roomId, seat);
-          req.respondWith(response);
-          return;
-        } else {
-          req.respondWith(new Response("Error: 予期せぬエラーです"));
-          return;
-        }
+        return this.liveroom.callCreateApi(req, url);
       })
       .get(rootPath + "/join", (req, url) => {
-        const keycardConfig = getKeycardConfig(url.searchParams);
-        if (keycardConfig === null) {
-          req.respondWith(new Response("Error: パラメータが不足しています"));
-          return;
-        }
-        // WebSocket で接続
-        const { socket, response } = Deno.upgradeWebSocket(req.request);
-        // ルーム参加
-        const seat: Seat = {
-          id: keycardConfig.seatId,
-          socket: socket,
-        };
-        const result = this.join(keycardConfig.roomId, seat);
-        if (result === JoinResult.roomNotFound) {
-          // 失敗
-          req.respondWith(new Response("Error: ルームIDが見つかりません"));
-          return;
-        } else if (result === JoinResult.seatAlreadyFilled) {
-          // 失敗
-          req.respondWith(new Response("Error: 既にシートが埋まっています"));
-          return;
-        } else if (result === JoinResult.joined) {
-          this.clientHandler(keycardConfig.roomId, seat);
-          req.respondWith(response);
-          return;
-        } else {
-          req.respondWith(new Response("Error: 予期せぬエラーです"));
-          return;
-        }
+        return this.liveroom.callJoinApi(req, url);
       });
 
     const port = this.config?.port ?? defaultConfig.port!;
-    this.router.listen(port);
+    const server = new ApiRouterServer(this.router, { port: port });
+    server.run();
     if (logger != null) {
       logger(`running on port ${port}`);
     }
