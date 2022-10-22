@@ -157,7 +157,7 @@ class Liveroom {
     late final StreamSubscription<String> subs;
     subs = _joinCtrl.stream.listen((userId) {
       if (userId == myUserId) {
-        // my join
+        logger?.call('I joined');
         subs.cancel();
         completer.complete();
       }
@@ -187,7 +187,7 @@ class Liveroom {
     late final StreamSubscription<String> subs;
     subs = _joinCtrl.stream.listen((userId) {
       if (userId == myUserId) {
-        // my join
+        logger?.call('I joined');
         subs.cancel();
         completer.complete();
       }
@@ -202,6 +202,7 @@ class Liveroom {
         _errCtrl.sink.add(error.toString());
       },
     );
+    return completer.future;
   }
 
   /// listen for someone's join

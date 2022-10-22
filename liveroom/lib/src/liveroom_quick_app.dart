@@ -45,17 +45,15 @@ class _HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final layout = _HomePageLayout(
-      onTapCreate: () {
-        final room = liveroom.create(roomId: '0001');
-        room.then((value) {
-          pushToMessagePage(context);
-        });
+      onTapCreate: () async {
+        await liveroom.create(roomId: '0001');
+        // ignore: use_build_context_synchronously
+        pushToMessagePage(context);
       },
-      onTapJoin: () {
-        final room = liveroom.join(roomId: '0001');
-        room.then((value) {
-          pushToMessagePage(context);
-        });
+      onTapJoin: () async {
+        await liveroom.join(roomId: '0001');
+        // ignore: use_build_context_synchronously
+        pushToMessagePage(context);
       },
     );
 

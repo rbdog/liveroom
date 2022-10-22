@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:liveroom/liveroom.dart';
 
@@ -22,7 +24,9 @@ void main() {
 //
 // * ライブルームのインスタンス
 //
-final liveroom = Liveroom();
+final liveroom = Liveroom(logger: (log) {
+  print(log);
+});
 
 /// ホーム画面
 class HomePage extends StatelessWidget {
@@ -32,30 +36,24 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final layout = HomePageLayout(
       // 作成ボタンをタップ
-      onTapCreate: () {
+      onTapCreate: () async {
         //
         // * ルームを作成する = create
         //
-        final room = liveroom.create(roomId: '0001');
+        await liveroom.create(roomId: '0001');
 
-        room.then((value) {
-          // 成功
-          // メッセージ画面に進む
-          pushToMessagePage(context);
-        });
+        // メッセージ画面に進む
+        pushToMessagePage(context);
       },
       // 参加ボタンをタップ
-      onTapJoin: () {
+      onTapJoin: () async {
         //
         // * ルームに参加する = join
         //
-        final room = liveroom.join(roomId: '0001');
+        await liveroom.join(roomId: '0001');
 
-        room.then((value) {
-          // 成功
-          // メッセージ画面に進む
-          pushToMessagePage(context);
-        });
+        // メッセージ画面に進む
+        pushToMessagePage(context);
       },
     );
 
