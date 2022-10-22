@@ -45,30 +45,22 @@ enum Scheme {
 }
 
 class _LiveroomConfig {
-  final Scheme scheme;
-  final String host;
-  final String rootPath;
-  final int port;
-  String? roomId;
-  String? seatId;
-
   _LiveroomConfig({
     required this.scheme,
     required this.host,
     required this.rootPath,
     required this.port,
   });
+
+  final Scheme scheme;
+  final String host;
+  final String rootPath;
+  final int port;
+  String? roomId;
+  String? seatId;
 }
 
 class Liveroom {
-  WebSocketChannel? _channel;
-  var _sendCtrl = StreamController<_LiveEvent>.broadcast();
-  var _joinCtrl = StreamController<String>.broadcast();
-  var _exitCtrl = StreamController<String>.broadcast();
-  var _errCtrl = StreamController<String>.broadcast();
-  final _LiveroomConfig _config;
-  final void Function(String log)? logger;
-
   Liveroom({
     Scheme scheme = Scheme.ws,
     String host = '0.0.0.0',
@@ -81,6 +73,14 @@ class Liveroom {
           rootPath: rootPath,
           port: port,
         );
+
+  WebSocketChannel? _channel;
+  var _sendCtrl = StreamController<_LiveEvent>.broadcast();
+  var _joinCtrl = StreamController<String>.broadcast();
+  var _exitCtrl = StreamController<String>.broadcast();
+  var _errCtrl = StreamController<String>.broadcast();
+  final _LiveroomConfig _config;
+  final void Function(String log)? logger;
 
   // connect WebSocket
   void _connect(
@@ -215,7 +215,7 @@ class Liveroom {
   // exit room
   Future<void> exit() async {
     logger?.call('exit called');
-    _channel?.sink.close();
+    await _channel?.sink.close();
     _channel = null;
     _config.roomId = null;
   }
@@ -241,15 +241,15 @@ class Liveroom {
   /// * RESET ALL Liveroom state
   Future<void> reset() async {
     logger?.call('reset called');
-    _sendCtrl.sink.close();
-    _joinCtrl.sink.close();
-    _exitCtrl.sink.close();
-    _errCtrl.sink.close();
+    await _sendCtrl.sink.close();
+    await _joinCtrl.sink.close();
+    await _exitCtrl.sink.close();
+    await _errCtrl.sink.close();
     _sendCtrl = StreamController<_LiveEvent>.broadcast();
     _joinCtrl = StreamController<String>.broadcast();
     _exitCtrl = StreamController<String>.broadcast();
     _errCtrl = StreamController<String>.broadcast();
-    _channel?.sink.close();
+    await _channel?.sink.close();
     _channel = null;
     _config.roomId = null;
   }

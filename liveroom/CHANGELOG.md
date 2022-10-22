@@ -29,3 +29,7 @@
 ## 1.0.1
 
 - Refactor
+
+## 1.0.2
+
+- add await to exit()
