@@ -33,3 +33,7 @@
 ## 1.0.2
 
 - add await to exit()
+
+## 1.0.3 
+
+Refactor

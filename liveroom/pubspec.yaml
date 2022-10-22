@@ -1,6 +1,6 @@
 name: liveroom
 description: Super simple WebSocket Room kit
-version: 1.0.2
+version: 1.0.3
 repository: https://github.com/rbdog/liveroom
 
 environment:
