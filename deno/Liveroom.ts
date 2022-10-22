@@ -4,16 +4,16 @@
 
 import { ApiRouter, ApiRouterServer } from "./ApiRouter.ts";
 
-// イベント Body Type
-const LiveEventType = {
+// イベント種類
+const LiveAction = {
   join: 0,
   message: 1,
   exit: 2,
 };
 
 // ライブイベント
-type LiveEvent = {
-  type: number;
+type LiveMail = {
+  action: number;
   seat_id: string;
   message: string;
 };
@@ -133,7 +133,7 @@ export class Liveroom {
   }
 
   // ライブイベントを送る
-  sendLiveEvent(liveEvent: LiveEvent, room_id: string): number {
+  sendLiveMail(liveEvent: LiveMail, room_id: string): number {
     // 対象のルームを見つける
     const room = this.rooms.get(room_id);
     if (!room) {
@@ -163,22 +163,22 @@ export class Liveroom {
     // クライアントが接続したとき
     seat.socket.onopen = () => {
       // 送信するメッセージ
-      const liveEvent: LiveEvent = {
-        type: LiveEventType.join,
+      const mail: LiveMail = {
+        action: LiveAction.join,
         seat_id: seat.id,
         message: "参加しました",
       };
-      this.sendLiveEvent(liveEvent, room_id);
+      this.sendLiveMail(mail, room_id);
     };
     // クライアントからメッセージを受け取ったとき
     seat.socket.onmessage = (event) => {
       // 送信するメッセージ
-      const liveEvent: LiveEvent = {
-        type: LiveEventType.message,
+      const mail: LiveMail = {
+        action: LiveAction.message,
         seat_id: seat.id,
         message: event.data,
       };
-      this.sendLiveEvent(liveEvent, room_id);
+      this.sendLiveMail(mail, room_id);
     };
     // クライアントが切断したとき
     seat.socket.onclose = () => {
@@ -186,12 +186,12 @@ export class Liveroom {
       const result = this.exit(room_id, seat.id);
       if (result == ExitResult.exitAndKeepRoom) {
         // 送信するメッセージ
-        const liveEvent: LiveEvent = {
-          type: LiveEventType.exit,
+        const mail: LiveMail = {
+          action: LiveAction.exit,
           seat_id: seat.id,
           message: "退出しました",
         };
-        this.sendLiveEvent(liveEvent, room_id);
+        this.sendLiveMail(mail, room_id);
       }
     };
   }

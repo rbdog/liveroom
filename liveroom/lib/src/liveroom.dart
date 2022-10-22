@@ -3,35 +3,34 @@ import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-enum _LiveEventType {
+enum _LiveAction {
   join(0),
   message(1),
   exit(2);
 
   final int rawValue;
-  const _LiveEventType(this.rawValue);
-  factory _LiveEventType.from({required int rawValue}) {
-    final value =
-        _LiveEventType.values.firstWhere((e) => e.rawValue == rawValue);
+  const _LiveAction(this.rawValue);
+  factory _LiveAction.from({required int rawValue}) {
+    final value = _LiveAction.values.firstWhere((e) => e.rawValue == rawValue);
     return value;
   }
 }
 
-class _LiveEvent {
-  _LiveEvent({
-    required this.type,
+class _LiveMail {
+  _LiveMail({
+    required this.action,
     required this.seatId,
     required this.message,
   });
-  final _LiveEventType type;
+  final _LiveAction action;
   final String seatId;
   final String message;
-  _LiveEvent.fromJson(Map<String, dynamic> json)
-      : type = _LiveEventType.from(rawValue: json['type']),
+  _LiveMail.fromJson(Map<String, dynamic> json)
+      : action = _LiveAction.from(rawValue: json['action']),
         seatId = json['seat_id'],
         message = json['message'];
   Map<String, dynamic> toJson() => {
-        'type': type,
+        'action': action,
         'seat_id': seatId,
         'message': message,
       };
@@ -75,7 +74,7 @@ class Liveroom {
         );
 
   WebSocketChannel? _channel;
-  var _sendCtrl = StreamController<_LiveEvent>.broadcast();
+  var _sendCtrl = StreamController<_LiveMail>.broadcast();
   var _joinCtrl = StreamController<String>.broadcast();
   var _exitCtrl = StreamController<String>.broadcast();
   var _errCtrl = StreamController<String>.broadcast();
@@ -111,16 +110,16 @@ class Liveroom {
     _channel?.stream.listen(
       (event) {
         final json = jsonDecode(event);
-        final liveEvent = _LiveEvent.fromJson(json);
-        switch (liveEvent.type) {
-          case _LiveEventType.join:
-            _joinCtrl.sink.add(liveEvent.seatId);
+        final mail = _LiveMail.fromJson(json);
+        switch (mail.action) {
+          case _LiveAction.join:
+            _joinCtrl.sink.add(mail.seatId);
             break;
-          case _LiveEventType.message:
-            _sendCtrl.sink.add(liveEvent);
+          case _LiveAction.message:
+            _sendCtrl.sink.add(mail);
             break;
-          case _LiveEventType.exit:
-            _exitCtrl.sink.add(liveEvent.seatId);
+          case _LiveAction.exit:
+            _exitCtrl.sink.add(mail.seatId);
             break;
           default:
             break;
@@ -245,7 +244,7 @@ class Liveroom {
     await _joinCtrl.sink.close();
     await _exitCtrl.sink.close();
     await _errCtrl.sink.close();
-    _sendCtrl = StreamController<_LiveEvent>.broadcast();
+    _sendCtrl = StreamController<_LiveMail>.broadcast();
     _joinCtrl = StreamController<String>.broadcast();
     _exitCtrl = StreamController<String>.broadcast();
     _errCtrl = StreamController<String>.broadcast();

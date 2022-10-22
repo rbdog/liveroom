@@ -22,7 +22,9 @@ void main() {
 //
 // * ライブルームのインスタンス
 //
-final liveroom = Liveroom();
+final liveroom = Liveroom(logger: (log) {
+  print(log);
+});
 
 /// ホーム画面
 class HomePage extends StatelessWidget {
