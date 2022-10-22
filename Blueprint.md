@@ -4,15 +4,15 @@ WebSocket URL
 
 | API         | URL                                                                 |
 | ----------- | ------------------------------------------------------------------- |
-| Create Room | ws://localhost:5000/liveroom/create?room_id=ROOM_ID&seat_id=SEAT_ID |
-| Join Room   | ws://localhost:5000/liveroom/join?room_id=ROOM_ID&seat_id=SEAT_ID   |
+| Create Room | ws://localhost:5000/liveroom/create?room_id=ROOM_ID&user_id=USER_ID |
+| Join Room   | ws://localhost:5000/liveroom/join?room_id=ROOM_ID&user_id=USER_ID   |
 
 Data Message Format
 
 ```
 {
-  "seat_id": "MY_SEAT_ID",
-  "body_type": "message",
-  "body": "Hello from MY_SEAT_ID",
+  "action": "message",
+  "user_id": "MY_USER_ID",
+  "message": "Hello from MY_USER_ID"
 }
 ```

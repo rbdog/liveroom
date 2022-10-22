@@ -45,7 +45,7 @@ simple interfaces
 - liveroom.create(roomId: '0001');
 - liveroom.join(roomId: '0001');
 - liveroom.send(message: 'Hello');
-- liveroom.receive((seatId, message) {});
+- liveroom.receive((userId, message) {});
 - liveroom.exit();
 
 

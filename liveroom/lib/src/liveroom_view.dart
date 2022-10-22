@@ -16,13 +16,13 @@ class LiveroomView extends StatefulWidget {
   final Liveroom liveroom;
 
   /// Someone Joined
-  final void Function(String seatId)? onJoin;
+  final void Function(String userId)? onJoin;
 
   /// Someone Sent message
-  final void Function(String seatId, String message)? onReceive;
+  final void Function(String userId, String message)? onReceive;
 
   /// Someone Exited
-  final void Function(String seatId)? onExit;
+  final void Function(String userId)? onExit;
   final Widget child;
 
   @override
@@ -39,20 +39,18 @@ class _LiveroomViewState extends State<LiveroomView> {
   void initState() {
     super.initState();
     widget.liveroom.logger?.call('LiveroomView initState');
-    final joinSubs = widget.liveroom.onJoin((seatId) {
-      widget.onJoin?.call(seatId);
+    final joinSubs = widget.liveroom.onJoin((userId) {
+      widget.onJoin?.call(userId);
     });
-    final receiveSubs = widget.liveroom.receive((seatId, message) {
-      widget.onReceive?.call(seatId, message);
+    final receiveSubs = widget.liveroom.receive((userId, message) {
+      widget.onReceive?.call(userId, message);
     });
-    final exitSubs = widget.liveroom.onExit((seatId) {
-      widget.onExit?.call(seatId);
+    final exitSubs = widget.liveroom.onExit((userId) {
+      widget.onExit?.call(userId);
     });
-    setState(() {
-      subsList.add(receiveSubs);
-      subsList.add(joinSubs);
-      subsList.add(exitSubs);
-    });
+    subsList.add(receiveSubs);
+    subsList.add(joinSubs);
+    subsList.add(exitSubs);
   }
 
   @override

@@ -19,19 +19,19 @@ enum _LiveAction {
 class _LiveMail {
   _LiveMail({
     required this.action,
-    required this.seatId,
+    required this.userId,
     required this.message,
   });
   final _LiveAction action;
-  final String seatId;
+  final String userId;
   final String message;
   _LiveMail.fromJson(Map<String, dynamic> json)
       : action = _LiveAction.from(rawValue: json['action']),
-        seatId = json['seat_id'],
+        userId = json['user_id'],
         message = json['message'];
   Map<String, dynamic> toJson() => {
         'action': action,
-        'seat_id': seatId,
+        'user_id': userId,
         'message': message,
       };
 }
@@ -56,7 +56,7 @@ class _LiveroomConfig {
   final String rootPath;
   final int port;
   String? roomId;
-  String? seatId;
+  String? userId;
 }
 
 class Liveroom {
@@ -85,11 +85,11 @@ class Liveroom {
   void _connect(
     String apiPath,
     String roomId, {
-    required String? optSeatId,
+    required String? optUserId,
     required void Function(Object error) onError,
   }) {
     logger?.call('_connect called');
-    final seatId = optSeatId ?? const Uuid().v4();
+    final userId = optUserId ?? const Uuid().v4();
     final url = Uri(
       scheme: _config.scheme.rawValue,
       host: _config.host,
@@ -97,15 +97,15 @@ class Liveroom {
       port: _config.port,
       queryParameters: {
         'room_id': roomId,
-        'seat_id': seatId,
+        'user_id': userId,
       },
     );
     logger?.call('Connecting: ${url.toString()}');
     _channel = WebSocketChannel.connect(url);
 
-    // save roomId, seatId
+    // save roomId, userId
     _config.roomId = roomId;
-    _config.seatId = seatId;
+    _config.userId = userId;
     // WebSocket Listen
     _channel?.stream.listen(
       (event) {
@@ -113,13 +113,13 @@ class Liveroom {
         final mail = _LiveMail.fromJson(json);
         switch (mail.action) {
           case _LiveAction.join:
-            _joinCtrl.sink.add(mail.seatId);
+            _joinCtrl.sink.add(mail.userId);
             break;
           case _LiveAction.message:
             _sendCtrl.sink.add(mail);
             break;
           case _LiveAction.exit:
-            _exitCtrl.sink.add(mail.seatId);
+            _exitCtrl.sink.add(mail.userId);
             break;
           default:
             break;
@@ -132,7 +132,7 @@ class Liveroom {
       },
       onDone: () {
         /// disconnected
-        _exitCtrl.sink.add(seatId);
+        _exitCtrl.sink.add(userId);
       },
     );
   }
@@ -141,48 +141,71 @@ class Liveroom {
     return _channel != null;
   }
 
-  String? get mySeatId {
-    return _config.seatId;
+  String? get myUserId {
+    return _config.userId;
   }
 
   /// create Room
-  Future<void> create({required String roomId, String? seatId}) async {
+  Future<void> create({required String roomId, String? userId}) async {
     logger?.call('create called');
     if (isJoined) {
       logger?.call('exiting old room ...');
       await exit();
       logger?.call('exited old room');
     }
+    var completer = Completer<void>();
+    late final StreamSubscription<String> subs;
+    subs = _joinCtrl.stream.listen((userId) {
+      if (userId == myUserId) {
+        // my join
+        subs.cancel();
+        completer.complete();
+      }
+    });
     _connect(
       '/create',
       roomId,
-      optSeatId: seatId,
+      optUserId: userId,
       onError: (Object error) {
+        subs.cancel();
+        completer.completeError(error);
         _errCtrl.sink.add(error.toString());
       },
     );
+    return completer.future;
   }
 
   /// join Room
-  Future<void> join({required String roomId, String? seatId}) async {
+  Future<void> join({required String roomId, String? userId}) async {
     logger?.call('join called');
     if (isJoined) {
       logger?.call('exiting old room ...');
       await exit();
       logger?.call('exited old room');
     }
+    var completer = Completer<void>();
+    late final StreamSubscription<String> subs;
+    subs = _joinCtrl.stream.listen((userId) {
+      if (userId == myUserId) {
+        // my join
+        subs.cancel();
+        completer.complete();
+      }
+    });
     _connect(
       '/join',
       roomId,
-      optSeatId: seatId,
+      optUserId: userId,
       onError: (Object error) {
+        subs.cancel();
+        completer.completeError(error);
         _errCtrl.sink.add(error.toString());
       },
     );
   }
 
   /// listen for someone's join
-  StreamSubscription onJoin(void Function(String seatId) process) {
+  StreamSubscription onJoin(void Function(String userId) process) {
     logger?.call('onJoin called');
     final subs = _joinCtrl.stream.listen((body) {
       process(body);
@@ -202,11 +225,11 @@ class Liveroom {
 
   /// listen for someone's message
   StreamSubscription receive(
-    void Function(String seatId, String message) process,
+    void Function(String userId, String message) process,
   ) {
     logger?.call('receive called');
     final subs = _sendCtrl.stream.listen((liveEvent) {
-      process(liveEvent.seatId, liveEvent.message);
+      process(liveEvent.userId, liveEvent.message);
     });
     return subs;
   }
@@ -220,7 +243,7 @@ class Liveroom {
   }
 
   /// listen for someone's exit
-  StreamSubscription onExit(void Function(String seatId) process) {
+  StreamSubscription onExit(void Function(String userId) process) {
     logger?.call('onExit called');
     final subs = _exitCtrl.stream.listen((body) {
       process(body);

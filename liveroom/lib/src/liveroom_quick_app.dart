@@ -45,23 +45,19 @@ class _HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final layout = _HomePageLayout(
-      onTapCreate: () {
-        liveroom.create(roomId: '0001');
+      onTapCreate: () async {
+        await liveroom.create(roomId: '0001');
+        // ignore: use_build_context_synchronously
+        pushToMessagePage(context);
       },
-      onTapJoin: () {
-        liveroom.join(roomId: '0001');
+      onTapJoin: () async {
+        await liveroom.join(roomId: '0001');
+        // ignore: use_build_context_synchronously
+        pushToMessagePage(context);
       },
     );
 
-    return LiveroomView(
-      liveroom: liveroom,
-      onJoin: (seatId) {
-        if (liveroom.mySeatId == seatId) {
-          pushToMessagePage(context);
-        }
-      },
-      child: layout,
-    );
+    return layout;
   }
 }
 
@@ -107,13 +103,13 @@ class _MessagePageState extends State<_MessagePage> {
 
     return LiveroomView(
       liveroom: liveroom,
-      onJoin: (seatId) {
+      onJoin: (userId) {
         printMessage('--- JOIN ---');
       },
-      onReceive: ((seatId, message) {
+      onReceive: ((userId, message) {
         printMessage(message);
       }),
-      onExit: ((seatId) {
+      onExit: ((userId) {
         printMessage('--- EXIT ---');
       }),
       child: layout,

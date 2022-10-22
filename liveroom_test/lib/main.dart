@@ -22,13 +22,39 @@ void main() {
 //
 // * ライブルームのインスタンス
 //
-final liveroom = Liveroom(logger: (log) {
-  print(log);
-});
+final liveroom = Liveroom();
 
 /// ホーム画面
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = HomePageLayout(
+      // 作成ボタンをタップ
+      onTapCreate: () async {
+        //
+        // * ルームを作成する = create
+        //
+        await liveroom.create(roomId: '0001');
+
+        // メッセージ画面に進む
+        pushToMessagePage(context);
+      },
+      // 参加ボタンをタップ
+      onTapJoin: () async {
+        //
+        // * ルームに参加する = join
+        //
+        await liveroom.join(roomId: '0001');
+
+        // メッセージ画面に進む
+        pushToMessagePage(context);
+      },
+    );
+
+    return layout;
+  }
 
   /// メッセージ画面へ進む
   void pushToMessagePage(BuildContext context) {
@@ -36,43 +62,6 @@ class HomePage extends StatelessWidget {
       builder: (context) => const MessagePage(),
     );
     Navigator.of(context).push(route);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final layout = HomePageLayout(
-      // ルームを作成をタップ
-      onTapCreate: () {
-        //
-        // * ルームを作成したいとき = create
-        //
-        liveroom.create(roomId: '0001');
-      },
-      // ルームに参加をタップ
-      onTapJoin: () {
-        //
-        // * ルームに参加したいとき = join
-        //
-        liveroom.join(roomId: '0001');
-      },
-    );
-
-    //
-    // * ライブルームView を使ってメッセージを受け取る
-    //
-    return LiveroomView(
-      liveroom: liveroom,
-      //
-      // * 誰かがルームに参加したとき = onJoin
-      //
-      onJoin: (seatId) {
-        // 自分だったときはメッセージ画面に進む
-        if (liveroom.mySeatId == seatId) {
-          pushToMessagePage(context);
-        }
-      },
-      child: layout,
-    );
   }
 }
 
@@ -87,8 +76,64 @@ class MessagePage extends StatefulWidget {
 class MessagePageState extends State<MessagePage> {
   final List<String> messages = [];
 
+  @override
+  Widget build(BuildContext context) {
+    final layout = MessagePageLayout(
+      messages: messages,
+
+      // 退出ボタンをタップ
+      onTapExit: () {
+        //
+        // * ルームを退出する = exit
+        //
+        liveroom.exit();
+
+        // 前の画面に戻る
+        popPage(context);
+      },
+
+      // 送信ボタンをタップ
+      onTapSend: (text) {
+        //
+        // * メッセージを送信する = send
+        //
+        liveroom.send(message: text);
+      },
+    );
+
+    //
+    // * ライブルームView を使ってメッセージを受け取る
+    //
+    return LiveroomView(
+      liveroom: liveroom,
+
+      //
+      // * 誰かがルームに参加したとき = onJoin
+      //
+      onJoin: (userId) {
+        addMessage('参加しました');
+      },
+
+      //
+      // * 誰かがメッセージを送信したとき = onReceive
+      //
+      onReceive: (userId, message) {
+        addMessage(message);
+      },
+
+      //
+      // * 誰かがルームを退出したとき = onExit
+      //
+      onExit: (userId) {
+        addMessage('退出しました');
+      },
+
+      child: layout,
+    );
+  }
+
   // メッセージを表示する
-  void printMessage(String message) {
+  void addMessage(String message) {
     setState(() {
       messages.add(message);
     });
@@ -97,56 +142,6 @@ class MessagePageState extends State<MessagePage> {
   // 前の画面に戻る
   void popPage(BuildContext context) {
     Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final layout = MessagePageLayout(
-      messages: messages,
-
-      // ルーム退出をタップ
-      onTapExit: (() {
-        //
-        // * ルームを退出したいとき = exit
-        //
-        liveroom.exit();
-
-        // 前の画面に戻る
-        popPage(context);
-      }),
-      onTapSend: ((text) {
-        liveroom.send(message: text);
-      }),
-    );
-
-    //
-    // * ライブルームView を使ってメッセージを受け取る
-    //
-    return LiveroomView(
-      liveroom: liveroom,
-      //
-      // * 誰かがルームに参加したとき = onJoin
-      //
-      onJoin: (seatId) {
-        // メッセージを表示する
-        printMessage('参加しました');
-      },
-      //
-      // * 誰かがメッセージを送信したとき = onReceive
-      //
-      onReceive: ((seatId, message) {
-        // メッセージを表示する
-        printMessage(message);
-      }),
-      //
-      // * 誰かがルームを退出したとき = onExit
-      //
-      onExit: ((seatId) {
-        // メッセージを表示する
-        printMessage('退出しました');
-      }),
-      child: layout,
-    );
   }
 }
 

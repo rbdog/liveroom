@@ -14,12 +14,12 @@ const LiveAction = {
 // ライブイベント
 type LiveMail = {
   action: number;
-  seat_id: string;
+  user_id: string;
   message: string;
 };
 
 // クライアント
-type Seat = {
+type User = {
   id: string;
   socket: WebSocket;
 };
@@ -27,51 +27,51 @@ type Seat = {
 // ルーム
 type Room = {
   id: string;
-  seats: Seat[];
+  users: User[];
 };
 
 /// キーカード
 type Keycard = {
   roomId: string;
-  seatId: string;
+  userId: string;
 };
 
 function createKeycard(searchParams: URLSearchParams): Keycard | null {
   // パラメータチェック
   const roomId = searchParams.get("room_id");
-  const seatId = searchParams.get("seat_id");
-  if (!roomId || !seatId) {
+  const userId = searchParams.get("user_id");
+  if (!roomId || !userId) {
     return null;
   } else {
     return {
       roomId: roomId,
-      seatId: seatId,
+      userId: userId,
     };
   }
 }
 
 const CreateResult = {
   alreadyExist: 0,
-  created: 1,
+  success: 1,
 };
 
 const JoinResult = {
   roomNotFound: 0,
-  seatAlreadyFilled: 1,
-  joined: 2,
+  alreadyJoined: 1,
+  success: 2,
 };
 
 const SendResult = {
   roomNotFound: 0,
   sent: 1,
-  notReadyConnecting: 2,
+  notReadyConnected: 2,
   alreadyClosed: 3,
 };
 
 const ExitResult = {
-  exitAndKeepRoom: 0,
+  successKeepRoom: 0,
   roomNotFound: 1,
-  exitAndDeleteRoom: 2,
+  successDeleteRoom: 2,
 };
 
 type Logger = (log: string) => void;
@@ -87,48 +87,48 @@ export class Liveroom {
   }
 
   // 新しいルームを作成
-  create(room_id: string, seat: Seat): number {
+  create(room_id: string, user: User): number {
     const room: Room = {
       id: room_id,
-      seats: [seat],
+      users: [user],
     };
     if (this.rooms.get(room_id)) {
       return CreateResult.alreadyExist;
     }
     this.rooms.set(room_id, room);
-    return CreateResult.created;
+    return CreateResult.success;
   }
 
   // ルームに参加
-  join(room_id: string, seat: Seat): number {
+  join(room_id: string, user: User): number {
     // 対象のルームを見つける
     const room = this.rooms.get(room_id);
     if (!room) {
       return JoinResult.roomNotFound;
     }
-    const oldSeats = room.seats.findIndex((e) => e.id === seat.id);
-    if (oldSeats >= 0) {
-      return JoinResult.seatAlreadyFilled;
+    const oldUsers = room.users.findIndex((e) => e.id === user.id);
+    if (oldUsers >= 0) {
+      return JoinResult.alreadyJoined;
     }
-    room.seats.push(seat);
-    return JoinResult.joined;
+    room.users.push(user);
+    return JoinResult.success;
   }
 
   // ルームから退出
-  exit(roomId: string, seat_id: string): number {
+  exit(roomId: string, user_id: string): number {
     // 対象のルームを見つける
     const room = this.rooms.get(roomId);
     if (!room) {
       return ExitResult.roomNotFound;
     }
     // クライアントを削除
-    room.seats = room.seats.filter((e) => e.id !== seat_id);
+    room.users = room.users.filter((e) => e.id !== user_id);
     // クライアントが0人になったらルームを削除
-    if (room.seats.length === 0) {
+    if (room.users.length === 0) {
       this.rooms.delete(roomId);
-      return ExitResult.exitAndDeleteRoom;
+      return ExitResult.successDeleteRoom;
     } else {
-      return ExitResult.exitAndKeepRoom;
+      return ExitResult.successKeepRoom;
     }
   }
 
@@ -140,17 +140,17 @@ export class Liveroom {
       return SendResult.roomNotFound;
     }
     // 全員に送信
-    for (const seat of room.seats) {
-      if (seat.socket.readyState == WebSocket.CONNECTING) {
+    for (const user of room.users) {
+      if (user.socket.readyState == WebSocket.CONNECTING) {
         // まだ接続中
-        return SendResult.notReadyConnecting;
-      } else if (seat.socket.readyState == WebSocket.OPEN) {
+        return SendResult.notReadyConnected;
+      } else if (user.socket.readyState == WebSocket.OPEN) {
         // 接続できている
         const json = JSON.stringify(liveEvent);
-        seat.socket.send(json);
+        user.socket.send(json);
       } else {
         // 既に切断されていた
-        this.exit(room_id, liveEvent.seat_id);
+        this.exit(room_id, liveEvent.user_id);
         return SendResult.alreadyClosed;
       }
     }
@@ -158,37 +158,37 @@ export class Liveroom {
   }
 
   // クライアント1人ずつに対する処理
-  clientHandler(room_id: string, seat: Seat) {
-    this.logger?.(`New join => Room: ${room_id}, Seat: ${seat.id}`);
+  clientHandler(room_id: string, user: User) {
+    this.logger?.(`New join => Room: ${room_id}, User: ${user.id}`);
     // クライアントが接続したとき
-    seat.socket.onopen = () => {
+    user.socket.onopen = () => {
       // 送信するメッセージ
       const mail: LiveMail = {
         action: LiveAction.join,
-        seat_id: seat.id,
+        user_id: user.id,
         message: "参加しました",
       };
       this.sendLiveMail(mail, room_id);
     };
     // クライアントからメッセージを受け取ったとき
-    seat.socket.onmessage = (event) => {
+    user.socket.onmessage = (event) => {
       // 送信するメッセージ
       const mail: LiveMail = {
         action: LiveAction.message,
-        seat_id: seat.id,
+        user_id: user.id,
         message: event.data,
       };
       this.sendLiveMail(mail, room_id);
     };
     // クライアントが切断したとき
-    seat.socket.onclose = () => {
+    user.socket.onclose = () => {
       // 自動的に退出
-      const result = this.exit(room_id, seat.id);
-      if (result == ExitResult.exitAndKeepRoom) {
+      const result = this.exit(room_id, user.id);
+      if (result == ExitResult.successKeepRoom) {
         // 送信するメッセージ
         const mail: LiveMail = {
           action: LiveAction.exit,
-          seat_id: seat.id,
+          user_id: user.id,
           message: "退出しました",
         };
         this.sendLiveMail(mail, room_id);
@@ -205,16 +205,16 @@ export class Liveroom {
     // WebSocket で接続
     const { socket, response } = Deno.upgradeWebSocket(req.request);
     // ルーム作成
-    const seat: Seat = {
-      id: keycard.seatId,
+    const user: User = {
+      id: keycard.userId,
       socket: socket,
     };
-    const result = this.create(keycard.roomId, seat);
+    const result = this.create(keycard.roomId, user);
     if (result === CreateResult.alreadyExist) {
       // 失敗
       return new Response("Error: 既に同じルームIDが存在します");
-    } else if (result === CreateResult.created) {
-      this.clientHandler(keycard.roomId, seat);
+    } else if (result === CreateResult.success) {
+      this.clientHandler(keycard.roomId, user);
       return response;
     } else {
       return new Response("Error: 予期せぬエラーです");
@@ -230,19 +230,19 @@ export class Liveroom {
     // WebSocket で接続
     const { socket, response } = Deno.upgradeWebSocket(req.request);
     // ルーム参加
-    const seat: Seat = {
-      id: keycard.seatId,
+    const user: User = {
+      id: keycard.userId,
       socket: socket,
     };
-    const result = this.join(keycard.roomId, seat);
+    const result = this.join(keycard.roomId, user);
     if (result === JoinResult.roomNotFound) {
       // 失敗
       return new Response("Error: ルームIDが見つかりません");
-    } else if (result === JoinResult.seatAlreadyFilled) {
+    } else if (result === JoinResult.alreadyJoined) {
       // 失敗
-      return new Response("Error: 既にシートが埋まっています");
-    } else if (result === JoinResult.joined) {
-      this.clientHandler(keycard.roomId, seat);
+      return new Response("Error: 既に参加中のユーザーIDです");
+    } else if (result === JoinResult.success) {
+      this.clientHandler(keycard.roomId, user);
       return response;
     } else {
       return new Response("Error: 予期せぬエラーです");

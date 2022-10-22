@@ -36,4 +36,8 @@
 
 ## 1.0.3 
 
-Refactor
+- Refactor
+
+## 1.0.4
+
+- Refactor
