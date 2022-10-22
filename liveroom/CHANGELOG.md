@@ -41,3 +41,7 @@
 ## 1.0.4
 
 - Refactor
+
+## 1.0.5
+
+- Refactor

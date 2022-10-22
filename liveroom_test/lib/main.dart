@@ -32,24 +32,30 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final layout = HomePageLayout(
       // 作成ボタンをタップ
-      onTapCreate: () async {
+      onTapCreate: () {
         //
         // * ルームを作成する = create
         //
-        await liveroom.create(roomId: '0001');
+        final room = liveroom.create(roomId: '0001');
 
-        // メッセージ画面に進む
-        pushToMessagePage(context);
+        room.then((value) {
+          // 成功
+          // メッセージ画面に進む
+          pushToMessagePage(context);
+        });
       },
       // 参加ボタンをタップ
-      onTapJoin: () async {
+      onTapJoin: () {
         //
         // * ルームに参加する = join
         //
-        await liveroom.join(roomId: '0001');
+        final room = liveroom.join(roomId: '0001');
 
-        // メッセージ画面に進む
-        pushToMessagePage(context);
+        room.then((value) {
+          // 成功
+          // メッセージ画面に進む
+          pushToMessagePage(context);
+        });
       },
     );
 
