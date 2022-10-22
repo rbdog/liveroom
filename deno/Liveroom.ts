@@ -5,7 +5,7 @@
 import { ApiRouter, ApiRouterServer } from "./ApiRouter.ts";
 
 // イベント Body Type
-const BodyType = {
+const LiveEventType = {
   join: 0,
   message: 1,
   exit: 2,
@@ -13,9 +13,9 @@ const BodyType = {
 
 // ライブイベント
 type LiveEvent = {
+  type: number;
   seat_id: string;
-  body_type: number;
-  body: string;
+  message: string;
 };
 
 // クライアント
@@ -30,13 +30,13 @@ type Room = {
   seats: Seat[];
 };
 
-/// キーカード作成に必要な情報
-type KeycardConfig = {
+/// キーカード
+type Keycard = {
   roomId: string;
   seatId: string;
 };
 
-function getKeycardConfig(searchParams: URLSearchParams): KeycardConfig | null {
+function createKeycard(searchParams: URLSearchParams): Keycard | null {
   // パラメータチェック
   const roomId = searchParams.get("room_id");
   const seatId = searchParams.get("seat_id");
@@ -164,9 +164,9 @@ export class Liveroom {
     seat.socket.onopen = () => {
       // 送信するメッセージ
       const liveEvent: LiveEvent = {
-        body_type: BodyType.join,
+        type: LiveEventType.join,
         seat_id: seat.id,
-        body: "参加しました",
+        message: "参加しました",
       };
       this.sendLiveEvent(liveEvent, room_id);
     };
@@ -174,9 +174,9 @@ export class Liveroom {
     seat.socket.onmessage = (event) => {
       // 送信するメッセージ
       const liveEvent: LiveEvent = {
-        body_type: BodyType.message,
+        type: LiveEventType.message,
         seat_id: seat.id,
-        body: event.data,
+        message: event.data,
       };
       this.sendLiveEvent(liveEvent, room_id);
     };
@@ -187,9 +187,9 @@ export class Liveroom {
       if (result == ExitResult.exitAndKeepRoom) {
         // 送信するメッセージ
         const liveEvent: LiveEvent = {
+          type: LiveEventType.exit,
           seat_id: seat.id,
-          body_type: BodyType.exit,
-          body: "退出しました",
+          message: "退出しました",
         };
         this.sendLiveEvent(liveEvent, room_id);
       }
@@ -198,23 +198,23 @@ export class Liveroom {
 
   callCreateApi(req: Deno.RequestEvent): Response {
     const url = new URL(req.request.url);
-    const keycardConfig = getKeycardConfig(url.searchParams);
-    if (keycardConfig === null) {
+    const keycard = createKeycard(url.searchParams);
+    if (keycard === null) {
       return new Response("Error: パラメータが不足しています");
     }
     // WebSocket で接続
     const { socket, response } = Deno.upgradeWebSocket(req.request);
     // ルーム作成
     const seat: Seat = {
-      id: keycardConfig.seatId,
+      id: keycard.seatId,
       socket: socket,
     };
-    const result = this.create(keycardConfig.roomId, seat);
+    const result = this.create(keycard.roomId, seat);
     if (result === CreateResult.alreadyExist) {
       // 失敗
       return new Response("Error: 既に同じルームIDが存在します");
     } else if (result === CreateResult.created) {
-      this.clientHandler(keycardConfig.roomId, seat);
+      this.clientHandler(keycard.roomId, seat);
       return response;
     } else {
       return new Response("Error: 予期せぬエラーです");
@@ -223,18 +223,18 @@ export class Liveroom {
 
   callJoinApi(req: Deno.RequestEvent): Response {
     const url = new URL(req.request.url);
-    const keycardConfig = getKeycardConfig(url.searchParams);
-    if (keycardConfig === null) {
+    const keycard = createKeycard(url.searchParams);
+    if (keycard === null) {
       return new Response("Error: パラメータが不足しています");
     }
     // WebSocket で接続
     const { socket, response } = Deno.upgradeWebSocket(req.request);
     // ルーム参加
     const seat: Seat = {
-      id: keycardConfig.seatId,
+      id: keycard.seatId,
       socket: socket,
     };
-    const result = this.join(keycardConfig.roomId, seat);
+    const result = this.join(keycard.roomId, seat);
     if (result === JoinResult.roomNotFound) {
       // 失敗
       return new Response("Error: ルームIDが見つかりません");
@@ -242,7 +242,7 @@ export class Liveroom {
       // 失敗
       return new Response("Error: 既にシートが埋まっています");
     } else if (result === JoinResult.joined) {
-      this.clientHandler(keycardConfig.roomId, seat);
+      this.clientHandler(keycard.roomId, seat);
       return response;
     } else {
       return new Response("Error: 予期せぬエラーです");

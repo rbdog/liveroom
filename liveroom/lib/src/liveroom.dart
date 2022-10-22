@@ -3,36 +3,37 @@ import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-enum _BodyType {
+enum _LiveEventType {
   join(0),
   message(1),
   exit(2);
 
   final int rawValue;
-  const _BodyType(this.rawValue);
-  factory _BodyType.from({required int rawValue}) {
-    final value = _BodyType.values.firstWhere((e) => e.rawValue == rawValue);
+  const _LiveEventType(this.rawValue);
+  factory _LiveEventType.from({required int rawValue}) {
+    final value =
+        _LiveEventType.values.firstWhere((e) => e.rawValue == rawValue);
     return value;
   }
 }
 
 class _LiveEvent {
-  final String seatId;
-  final _BodyType bodyType;
-  final String body;
   _LiveEvent({
+    required this.type,
     required this.seatId,
-    required this.bodyType,
-    required this.body,
+    required this.message,
   });
+  final _LiveEventType type;
+  final String seatId;
+  final String message;
   _LiveEvent.fromJson(Map<String, dynamic> json)
-      : seatId = json['seat_id'],
-        bodyType = _BodyType.from(rawValue: json['body_type']),
-        body = json['body'];
+      : type = _LiveEventType.from(rawValue: json['type']),
+        seatId = json['seat_id'],
+        message = json['message'];
   Map<String, dynamic> toJson() => {
+        'type': type,
         'seat_id': seatId,
-        'body_type': bodyType,
-        'body': body,
+        'message': message,
       };
 }
 
@@ -111,14 +112,14 @@ class Liveroom {
       (event) {
         final json = jsonDecode(event);
         final liveEvent = _LiveEvent.fromJson(json);
-        switch (liveEvent.bodyType) {
-          case _BodyType.join:
+        switch (liveEvent.type) {
+          case _LiveEventType.join:
             _joinCtrl.sink.add(liveEvent.seatId);
             break;
-          case _BodyType.message:
+          case _LiveEventType.message:
             _sendCtrl.sink.add(liveEvent);
             break;
-          case _BodyType.exit:
+          case _LiveEventType.exit:
             _exitCtrl.sink.add(liveEvent.seatId);
             break;
           default:
@@ -206,7 +207,7 @@ class Liveroom {
   ) {
     logger?.call('receive called');
     final subs = _sendCtrl.stream.listen((liveEvent) {
-      process(liveEvent.seatId, liveEvent.body);
+      process(liveEvent.seatId, liveEvent.message);
     });
     return subs;
   }
