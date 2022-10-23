@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:liveroom/liveroom.dart';
 
@@ -24,9 +22,7 @@ void main() {
 //
 // * ライブルームのインスタンス
 //
-final liveroom = Liveroom(logger: (log) {
-  print(log);
-});
+final liveroom = Liveroom();
 
 /// ホーム画面
 class HomePage extends StatelessWidget {
