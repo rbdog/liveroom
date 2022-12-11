@@ -274,6 +274,9 @@ export class LiveroomServer {
   run() {
     const rootPath = this.config?.rootPath ?? defaultConfig.rootPath!;
     this.router
+      .get(rootPath, (req) => {
+        return new Response("Hello from Liveroom");
+      })
       .get(rootPath + "/create", (req) => {
         return this.liveroom.callCreateApi(req);
       })
